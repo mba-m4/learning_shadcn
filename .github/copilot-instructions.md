@@ -45,6 +45,13 @@
 - `MSW` のハンドラとレスポンスは `types` と整合させる。
 - 実装後は可能な範囲で `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:run` を確認する。
 
+## Git運用ルール
+
+- 作業は「機能/責務ごとの小さい単位」でコミットする。
+- コミット前に、変更範囲に応じた最低限の動作確認（`lint` / `typecheck` / `test`）を行う。
+- 検証が通った綺麗な状態のみ `push` する（途中状態を残さない）。
+- 大きい変更は複数コミットに分割し、コミットメッセージで目的を明確にする。
+
 ## 共通UIコンポーネント
 
 - Loading: `@/components/common/loading`
