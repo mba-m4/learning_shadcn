@@ -7,7 +7,6 @@ import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
-  NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu'
@@ -51,29 +50,29 @@ export function WorkspaceShell() {
                       {topNav.label}
                     </NavigationMenuTrigger>
                     <NavigationMenuContent>
-                      <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                      <ul className="grid w-[400px] gap-2 p-1 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                         {topNav.submenus.map((submenu) => (
                           <li key={submenu.id}>
-                            <NavigationMenuLink asChild>
-                              <Link
-                                to={submenu.path}
-                                className={cn(
-                                  'block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
-                                  context.submenu.id === submenu.id &&
-                                    'bg-accent text-accent-foreground'
-                                )}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <submenu.icon className="size-4" />
-                                  <div className="text-sm font-medium leading-none">
-                                    {submenu.label}
-                                  </div>
+                            <Link
+                              to={submenu.path}
+                              className={cn(
+                                'group flex flex-row items-center gap-3 rounded-md px-3 py-2 leading-none no-underline outline-none focus-visible:outline-none',
+                                context.submenu.id === submenu.id &&
+                                  'bg-accent'
+                              )}
+                            >
+                              <div className="flex size-8 items-center justify-center rounded-md transition-colors group-hover:bg-accent group-hover:text-accent-foreground">
+                                <submenu.icon className="size-4 text-muted-foreground group-hover:text-accent-foreground" />
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <div className="text-sm font-medium leading-none">
+                                  {submenu.label}
                                 </div>
-                                <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                                <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
                                   {submenu.description}
                                 </p>
-                              </Link>
-                            </NavigationMenuLink>
+                              </div>
+                            </Link>
                           </li>
                         ))}
                       </ul>
