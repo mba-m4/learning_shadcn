@@ -14,13 +14,34 @@
    - `read:org` (Read org and team membership, read org projects)
 5. トークンを生成してコピー
 
-### 2. 環境変数の設定
+### 2. 環境変数の設定（MCP 用）
 
-`.env.local` ファイルを作成し、以下を追加:
+`GitHub MCP` は VS Code の MCP サーバープロセスで動作するため、
+`.env.local` ではなく **OS 環境変数**として `GITHUB_TOKEN` を設定する。
 
-```env
-GITHUB_TOKEN=your_github_token_here
+#### 方法A: zsh 設定ファイルに追加（推奨）
+
+`~/.zshrc` に以下を追加:
+
+```bash
+export GITHUB_TOKEN="your_github_token_here"
 ```
+
+反映:
+
+```bash
+source ~/.zshrc
+```
+
+#### 方法B: launchctl で GUI アプリ向けに設定（macOS）
+
+```bash
+launchctl setenv GITHUB_TOKEN "your_github_token_here"
+```
+
+その後、VS Code を再起動する。
+
+> 補足: `.env.local` は Vite アプリ実行時の環境変数用であり、MCP サーバー用ではない。
 
 ### 3. MCP サーバーの確認
 
@@ -43,6 +64,14 @@ GITHUB_TOKEN=your_github_token_here
 ### 4. VSCode の再起動
 
 設定完了後、VSCode を再起動すると GitHub MCP が有効になります。
+
+確認コマンド:
+
+```bash
+echo ${GITHUB_TOKEN:+set}
+```
+
+`set` と表示されれば設定済み。
 
 ## 利用可能な機能
 

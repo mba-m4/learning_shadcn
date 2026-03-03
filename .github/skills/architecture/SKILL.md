@@ -47,3 +47,18 @@ src/
 - `mocks/handlers/index.ts` で全ハンドラをエクスポート
 - 50行を超えるハンドラファイルは分割を検討
 
+## ドキュメント配置・命名規則
+
+- 仕様: `docs/specs/`
+- 設計: `docs/design/`
+- ガイド: `docs/guides/`
+- ADR: `docs/adr/`
+
+命名は `kebab-case` を基本とし、用途サフィックスを付ける。
+
+- `xxx-mvp-spec.md`
+- `xxx-detail-spec.md`
+- `xxx-design.md`
+- `xxx-setup-guide.md`
+- `NNNN-short-title.md`（ADR）
+

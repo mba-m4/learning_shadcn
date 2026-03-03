@@ -60,3 +60,26 @@
 4. 型定義の提供有無
 5. プロジェクトの技術方針との整合性
 
+## ドキュメント運用ルール
+
+### 保管場所
+
+- 要件/仕様: `docs/specs/`
+- 設計（画面/アーキ/API）: `docs/design/`
+- 開発手順/運用手順: `docs/guides/`
+- ADR（設計判断記録）: `docs/adr/`
+
+### 命名規則
+
+- 形式: `kebab-case` + 用途サフィックス
+- 仕様書: `xxx-mvp-spec.md` / `xxx-detail-spec.md`
+- 設計書: `xxx-design.md`
+- 手順書: `xxx-setup-guide.md` / `xxx-runbook.md`
+- ADR: `NNNN-short-title.md`（例: `0001-routing-strategy.md`）
+
+### 更新ルール
+
+- 仕様変更のPRでは、対応する `docs/` を同時更新する。
+- 実装前に仕様が未確定なら、先に `docs/specs/` を更新して合意を取る。
+- 画面遷移・API契約・型定義方針の変更時は必ず履歴が残る形で更新する。
+
