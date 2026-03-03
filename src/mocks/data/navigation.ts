@@ -1,0 +1,357 @@
+import type { TopNavConfig } from '@/types/navigation'
+
+export const navigationConfig: TopNavConfig[] = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    basePath: '/dashboard',
+    submenus: [
+      {
+        id: 'overview',
+        label: 'Overview',
+        path: '/dashboard/overview',
+        sidebarItems: [
+          { label: '期間フィルタ' },
+          { label: '担当範囲' },
+          { label: '重要通知' },
+        ],
+      },
+      {
+        id: 'my-summary',
+        label: 'My Summary',
+        path: '/dashboard/my-summary',
+        sidebarItems: [
+          { label: '今週のタスク' },
+          { label: '優先アラート' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'project',
+    label: 'Project',
+    basePath: '/project',
+    submenus: [
+      {
+        id: 'active',
+        label: 'Active',
+        path: '/project/active',
+        sidebarItems: [
+          { label: 'Overview' },
+          { label: 'Members' },
+          { label: 'Milestones' },
+          { label: 'Risk' },
+          { label: 'Budget' },
+          { label: 'AIリスク分析' },
+        ],
+      },
+      {
+        id: 'archived',
+        label: 'Archived',
+        path: '/project/archived',
+        sidebarItems: [
+          { label: '完了プロジェクト' },
+          { label: '保管ポリシー' },
+        ],
+      },
+      {
+        id: 'templates',
+        label: 'Templates',
+        path: '/project/templates',
+        sidebarItems: [
+          { label: '新規テンプレート' },
+          { label: 'テンプレート管理' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'task',
+    label: 'Task',
+    basePath: '/task',
+    submenus: [
+      {
+        id: 'my-tasks',
+        label: 'My Tasks',
+        path: '/task/my',
+        sidebarItems: [
+          { label: 'ステータス' },
+          { label: '優先度' },
+          { label: '担当者' },
+          { label: '期限' },
+          { label: '関連ドキュメント' },
+          { label: 'AI提案タスク' },
+        ],
+      },
+      {
+        id: 'backlog',
+        label: 'Backlog',
+        path: '/task/backlog',
+        sidebarItems: [
+          { label: '優先度' },
+          { label: '見積り' },
+          { label: '担当未割当' },
+        ],
+      },
+      {
+        id: 'board',
+        label: 'Board',
+        path: '/task/board',
+        sidebarItems: [
+          { label: 'スイムレーン' },
+          { label: 'WIP制限' },
+          { label: 'ラベル' },
+        ],
+      },
+      {
+        id: 'gantt',
+        label: 'Gantt',
+        path: '/task/gantt',
+        sidebarItems: [
+          { label: '依存関係' },
+          { label: '期間' },
+          { label: '担当者' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'document',
+    label: 'Document',
+    basePath: '/document',
+    submenus: [
+      {
+        id: 'knowledge',
+        label: 'Knowledge',
+        path: '/document/knowledge',
+        sidebarItems: [
+          {
+            label: 'カテゴリ',
+            children: ['開発', 'インフラ', 'セキュリティ', '運用'],
+          },
+          { label: 'タグ一覧' },
+          { label: '最近更新' },
+          { label: '未整理' },
+          { label: '承認待ち' },
+          { label: '自分の投稿' },
+          { label: 'AI推薦' },
+        ],
+      },
+      {
+        id: 'specification',
+        label: 'Specification',
+        path: '/document/specification',
+        sidebarItems: [
+          { label: '業務要件' },
+          { label: '機能仕様' },
+          { label: '非機能要件' },
+        ],
+      },
+      {
+        id: 'design',
+        label: 'Design',
+        path: '/document/design',
+        sidebarItems: [
+          { label: '画面設計' },
+          { label: 'アーキ設計' },
+          { label: 'API設計' },
+        ],
+      },
+      {
+        id: 'sop',
+        label: 'SOP',
+        path: '/document/sop',
+        sidebarItems: [{ label: '手順種別' }, { label: '更新日' }],
+      },
+      {
+        id: 'meeting-minutes',
+        label: 'Meeting Minutes',
+        path: '/document/meeting-minutes',
+        sidebarItems: [{ label: '会議種別' }, { label: '参加者' }],
+      },
+      {
+        id: 'templates',
+        label: 'Templates',
+        path: '/document/templates',
+        sidebarItems: [{ label: 'テンプレート種別' }, { label: '利用頻度' }],
+      },
+      {
+        id: 'archive',
+        label: 'Archive',
+        path: '/document/archive',
+        sidebarItems: [{ label: '保管年' }, { label: 'ドメイン' }],
+      },
+    ],
+  },
+  {
+    id: 'incident',
+    label: 'Incident',
+    basePath: '/incident',
+    submenus: [
+      {
+        id: 'open',
+        label: 'Open',
+        path: '/incident/open',
+        sidebarItems: [
+          { label: 'Severity' },
+          { label: '発生システム' },
+          { label: 'SLA影響' },
+          { label: '再発リスク' },
+          { label: '類似事例（AI）' },
+        ],
+      },
+      {
+        id: 'closed',
+        label: 'Closed',
+        path: '/incident/closed',
+        sidebarItems: [{ label: 'クローズ理由' }, { label: '再発防止策' }],
+      },
+      {
+        id: 'postmortem',
+        label: 'Postmortem',
+        path: '/incident/postmortem',
+        sidebarItems: [{ label: '原因分類' }, { label: '再発防止策' }],
+      },
+      {
+        id: 'root-cause',
+        label: 'Root Cause',
+        path: '/incident/root-cause',
+        sidebarItems: [{ label: '5Whys' }, { label: '影響範囲' }],
+      },
+    ],
+  },
+  {
+    id: 'ai',
+    label: 'AI',
+    basePath: '/ai',
+    submenus: [
+      {
+        id: 'ask',
+        label: 'Ask AI',
+        path: '/ai/ask',
+        sidebarItems: [
+          {
+            label: '検索範囲',
+            children: ['全体', 'Documentのみ', 'Incidentのみ', 'Project単位'],
+          },
+          { label: '期間フィルタ' },
+          { label: '重要度' },
+          { label: '技術タグ' },
+          { label: '信頼度表示ON/OFF' },
+          { label: '参照元表示切替' },
+        ],
+      },
+      {
+        id: 'search',
+        label: '横断検索',
+        path: '/ai/search',
+        sidebarItems: [
+          { label: '意味検索' },
+          { label: '検索範囲' },
+          { label: '関連度しきい値' },
+        ],
+      },
+      {
+        id: 'incident-similar',
+        label: '類似インシデント分析',
+        path: '/ai/incident-similar',
+        sidebarItems: [{ label: 'Severity' }, { label: 'システム' }, { label: '期間' }],
+      },
+      {
+        id: 'knowledge-suggestion',
+        label: 'ナレッジ提案',
+        path: '/ai/knowledge-suggestion',
+        sidebarItems: [{ label: '対象ドメイン' }, { label: '信頼度' }],
+      },
+      {
+        id: 'summarize',
+        label: '自動要約/生成',
+        path: '/ai/summarize',
+        sidebarItems: [{ label: '要約長' }, { label: 'フォーマット' }],
+      },
+      {
+        id: 'report-generation',
+        label: 'レポート生成',
+        path: '/ai/report-generation',
+        sidebarItems: [{ label: '対象期間' }, { label: '出力形式' }],
+      },
+    ],
+  },
+  {
+    id: 'report',
+    label: 'Report',
+    basePath: '/report',
+    submenus: [
+      {
+        id: 'progress',
+        label: 'Progress',
+        path: '/report/progress',
+        sidebarItems: [
+          { label: '期間' },
+          { label: 'プロジェクト' },
+          { label: 'メンバー' },
+          { label: '出力形式（CSV/PDF）' },
+        ],
+      },
+      {
+        id: 'kpi',
+        label: 'KPI',
+        path: '/report/kpi',
+        sidebarItems: [{ label: 'KPIカテゴリ' }, { label: 'しきい値' }],
+      },
+      {
+        id: 'effort',
+        label: '工数',
+        path: '/report/effort',
+        sidebarItems: [{ label: '担当者' }, { label: '期間' }],
+      },
+      {
+        id: 'sla',
+        label: 'SLA',
+        path: '/report/sla',
+        sidebarItems: [{ label: 'サービス種別' }, { label: '違反有無' }],
+      },
+      {
+        id: 'custom',
+        label: 'カスタムレポート',
+        path: '/report/custom',
+        sidebarItems: [{ label: 'レポートテンプレート' }, { label: '出力形式' }],
+      },
+    ],
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    basePath: '/admin',
+    submenus: [
+      {
+        id: 'users',
+        label: 'Users',
+        path: '/admin/users',
+        sidebarItems: [
+          { label: '組織' },
+          { label: '権限テンプレート' },
+          { label: 'アクティビティ種別' },
+        ],
+      },
+      {
+        id: 'roles',
+        label: 'Roles',
+        path: '/admin/roles',
+        sidebarItems: [{ label: 'ロール種別' }, { label: '権限スコープ' }],
+      },
+      {
+        id: 'audit-logs',
+        label: 'Audit Logs',
+        path: '/admin/audit-logs',
+        sidebarItems: [{ label: '実行者' }, { label: 'イベント種別' }, { label: '期間' }],
+      },
+      {
+        id: 'system-settings',
+        label: 'System Settings',
+        path: '/admin/system-settings',
+        sidebarItems: [{ label: '通知設定' }, { label: 'セキュリティ設定' }],
+      },
+    ],
+  },
+]
