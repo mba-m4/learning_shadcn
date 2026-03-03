@@ -1,15 +1,16 @@
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Bell, Search } from 'lucide-react'
 import { navigationConfig } from '@/mocks/data/navigation'
 import { getNavigationContext } from '@/app/navigation-context'
 import { cn } from '@/lib/utils'
 import {
   NavigationMenu,
+  NavigationMenuContent,
   NavigationMenuItem,
+  NavigationMenuLink,
   NavigationMenuList,
-  navigationMenuTriggerStyle,
+  NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -27,7 +28,6 @@ import { Separator } from '@/components/ui/separator'
 
 export function WorkspaceShell() {
   const location = useLocation()
-  const navigate = useNavigate()
   const context = getNavigationContext(location.pathname)
 
   return (
@@ -38,23 +38,46 @@ export function WorkspaceShell() {
             WorkOps
           </Link>
 
-          <NavigationMenu viewport={false} className="hidden md:flex">
+          <NavigationMenu className="hidden md:flex">
             <NavigationMenuList>
               {navigationConfig.map((topNav) => {
                 const isActive = context.topNav.id === topNav.id
-                const targetPath = topNav.submenus[0]?.path ?? topNav.basePath
 
                 return (
                   <NavigationMenuItem key={topNav.id}>
-                    <NavLink
-                      to={targetPath}
-                      className={cn(
-                        navigationMenuTriggerStyle(),
-                        isActive && 'bg-accent text-accent-foreground'
-                      )}
+                    <NavigationMenuTrigger
+                      className={cn(isActive && 'bg-accent text-accent-foreground')}
                     >
                       {topNav.label}
-                    </NavLink>
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                      <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                        {topNav.submenus.map((submenu) => (
+                          <li key={submenu.id}>
+                            <NavigationMenuLink asChild>
+                              <Link
+                                to={submenu.path}
+                                className={cn(
+                                  'block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
+                                  context.submenu.id === submenu.id &&
+                                    'bg-accent text-accent-foreground'
+                                )}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <submenu.icon className="size-4" />
+                                  <div className="text-sm font-medium leading-none">
+                                    {submenu.label}
+                                  </div>
+                                </div>
+                                <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                                  {submenu.description}
+                                </p>
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
+                        ))}
+                      </ul>
+                    </NavigationMenuContent>
                   </NavigationMenuItem>
                 )
               })}
@@ -89,24 +112,6 @@ export function WorkspaceShell() {
           </div>
         </div>
       </header>
-
-      <div className="border-b bg-muted/20">
-        <div className="mx-auto max-w-[1400px] px-4 py-2">
-          <Tabs value={context.submenu.path} onValueChange={(path) => navigate(path)}>
-            <TabsList className="h-auto w-full justify-start gap-2 rounded-none bg-transparent p-0">
-              {context.topNav.submenus.map((submenu) => (
-                <TabsTrigger
-                  key={submenu.id}
-                  value={submenu.path}
-                  className="rounded-md border border-transparent data-[state=active]:border-border data-[state=active]:bg-background"
-                >
-                  {submenu.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
 
       <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-4 px-4 py-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside>
