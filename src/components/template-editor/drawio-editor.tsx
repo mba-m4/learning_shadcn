@@ -21,6 +21,7 @@ export function DrawioEditor({ template, onSave }: DrawioEditorProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [currentXml, setCurrentXml] = useState<string>('')
+  const [isReady, setIsReady] = useState(false)
 
   /**
    * draw.io にXMLをロード
@@ -57,34 +58,42 @@ export function DrawioEditor({ template, onSave }: DrawioEditorProps) {
     )
   }, [])
 
+  // テンプレートが変更された時の処理
+  useEffect(() => {
+    if (template && isReady) {
+      setIsLoading(true)
+      if (template.diagramXml) {
+        setTimeout(() => {
+          loadXml(template.diagramXml)
+          setIsLoading(false)
+        }, 300)
+      } else {
+        setIsLoading(false)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template?.id, isReady, loadXml])
+
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // draw.io からのメッセージのみ処理
       if (event.data === 'ready') {
-        console.log('draw.io loaded')
+        console.log('draw.io loaded and ready')
+        setIsReady(true)
         setIsLoading(false)
-      }
-
-      // draw.io が初期化完了したらXMLをロード
-      if (event.data === 'ready' && template) {
-        if (template.diagramXml) {
-          // 既存のXMLをロード
-          setTimeout(() => {
-            loadXml(template.diagramXml)
-          }, 500)
-        }
       }
 
       // draw.io からのエクスポート結果を受信
       if (typeof event.data === 'string' && event.data.startsWith('export:')) {
         const xml = event.data.substring(7) // "export:" を除去
         setCurrentXml(xml)
+        console.log('XML exported, length:', xml.length)
       }
     }
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [template, loadXml])
+  }, [])
 
   /**
    * テンプレートを保存
@@ -94,21 +103,31 @@ export function DrawioEditor({ template, onSave }: DrawioEditorProps) {
 
     setIsSaving(true)
 
-    // 最新のXMLをエクスポート
+    // 保存前に最新のXMLをエクスポート
     exportXml()
 
-    // エクスポート完了を待つ（簡易実装）
+    // エクスポート完了を待つ
     setTimeout(() => {
+      // エクスポートされたXMLを使用、なければ現在のXMLまたはテンプレートのXMLを使用
+      const xmlToSave = currentXml || template.diagramXml
+
+      if (!xmlToSave) {
+        console.warn('No XML to save')
+        setIsSaving(false)
+        return
+      }
+
       const updated = updateTemplate(template.id, {
-        diagramXml: currentXml || template.diagramXml,
+        diagramXml: xmlToSave,
       })
 
       setIsSaving(false)
 
       if (updated && onSave) {
         onSave(updated)
+        console.log('Template saved successfully')
       }
-    }, 1000)
+    }, 1500) // エクスポート完了を待つため少し長めに設定
   }
 
   if (!template) {

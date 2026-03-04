@@ -14,24 +14,29 @@ const submenuRoutes = getAllSubmenuPaths()
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <WorkspaceShell />,
     children: [
       {
-        index: true,
-        element: <Navigate to="/dashboard/overview" replace />,
+        path: '',
+        element: <WorkspaceShell />,
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/dashboard/overview" replace />,
+          },
+          ...submenuRoutes,
+          {
+            path: 'document/knowledge/category/:category',
+            element: <WorkspacePage />,
+          },
+          {
+            path: '*',
+            element: <Navigate to="/dashboard/overview" replace />,
+          },
+        ],
       },
-      ...submenuRoutes,
       {
         path: 'document/templates',
         element: <DocumentTemplatePage />,
-      },
-      {
-        path: 'document/knowledge/category/:category',
-        element: <WorkspacePage />,
-      },
-      {
-        path: '*',
-        element: <Navigate to="/dashboard/overview" replace />,
       },
     ],
   },

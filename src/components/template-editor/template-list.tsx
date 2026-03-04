@@ -140,14 +140,14 @@ export function TemplateList({
         ) : (
           <div className="space-y-1 p-2">
             {templates.map((template) => (
-              <button
+              <div
                 key={template.id}
-                onClick={() => onSelectTemplate(template)}
                 className={cn(
-                  'group flex w-full items-start gap-3 rounded-md p-3 text-left transition-colors hover:bg-accent',
+                  'group flex w-full cursor-pointer items-start gap-3 rounded-md p-3 transition-colors hover:bg-accent',
                   selectedTemplateId === template.id &&
                     'bg-accent text-accent-foreground'
                 )}
+                onClick={() => onSelectTemplate(template)}
               >
                 <FileText className="mt-0.5 size-4 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -163,15 +163,14 @@ export function TemplateList({
                     {new Date(template.updatedAt).toLocaleDateString('ja-JP')}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
+                <button
                   onClick={(e) => handleDeleteTemplate(template.id, e)}
-                  className="opacity-0 group-hover:opacity-100"
+                  className="flex size-6 items-center justify-center rounded opacity-0 transition-opacity hover:bg-destructive/10 group-hover:opacity-100"
+                  aria-label="テンプレートを削除"
                 >
                   <Trash2 className="size-4 text-destructive" />
-                </Button>
-              </button>
+                </button>
+              </div>
             ))}
           </div>
         )}

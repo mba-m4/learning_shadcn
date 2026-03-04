@@ -4,6 +4,9 @@
  */
 
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { LeftSidebar } from '@/components/layout/left-sidebar'
 import { RightSidebar } from '@/components/layout/right-sidebar'
 import { TemplateList } from '@/components/template-editor/template-list'
@@ -25,41 +28,59 @@ export function DocumentTemplatePage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
-      {/* 左サイドバー: テンプレート一覧 */}
-      <LeftSidebar width={280}>
-        <TemplateList
-          selectedTemplateId={selectedTemplate?.id}
-          onSelectTemplate={handleSelectTemplate}
-        />
-      </LeftSidebar>
-
-      {/* 中央エリア: draw.io エディタ */}
-      <main className="flex-1">
-        <DrawioEditor
-          template={selectedTemplate}
-          onSave={handleSaveTemplate}
-        />
-      </main>
-
-      {/* 右サイドバー: DB選択・プレースホルダー管理 */}
-      <RightSidebar width={320}>
-        <div className="p-4">
-          <h2 className="mb-4 text-sm font-semibold">DB連携設定</h2>
-          <div className="text-sm text-muted-foreground">
-            {selectedTemplate ? (
-              <div>
-                <p className="mb-2">テンプレート: {selectedTemplate.name}</p>
-                <p className="text-xs">
-                  プレースホルダー管理機能は次のフェーズで実装されます
-                </p>
-              </div>
-            ) : (
-              <p>テンプレートを選択してください</p>
-            )}
+    <div className="min-h-svh bg-background text-foreground">
+      {/* ヘッダー */}
+      <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
+        <div className="flex h-14 items-center gap-4 px-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/dashboard/overview">
+              <ArrowLeft className="mr-2 size-4" />
+              戻る
+            </Link>
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-sm font-semibold">ドキュメントテンプレートエディタ</h1>
           </div>
         </div>
-      </RightSidebar>
+      </header>
+
+      {/* メインコンテンツ: 3カラムレイアウト */}
+      <div className="flex h-[calc(100vh-3.5rem)]">
+        {/* 左サイドバー: テンプレート一覧 */}
+        <LeftSidebar width={280}>
+          <TemplateList
+            selectedTemplateId={selectedTemplate?.id}
+            onSelectTemplate={handleSelectTemplate}
+          />
+        </LeftSidebar>
+
+        {/* 中央エリア: draw.io エディタ */}
+        <main className="flex-1">
+          <DrawioEditor
+            template={selectedTemplate}
+            onSave={handleSaveTemplate}
+          />
+        </main>
+
+        {/* 右サイドバー: DB選択・プレースホルダー管理 */}
+        <RightSidebar width={320}>
+          <div className="p-4">
+            <h2 className="mb-4 text-sm font-semibold">DB連携設定</h2>
+            <div className="text-sm text-muted-foreground">
+              {selectedTemplate ? (
+                <div>
+                  <p className="mb-2">テンプレート: {selectedTemplate.name}</p>
+                  <p className="text-xs">
+                    プレースホルダー管理機能は次のフェーズで実装されます
+                  </p>
+                </div>
+              ) : (
+                <p>テンプレートを選択してください</p>
+              )}
+            </div>
+          </div>
+        </RightSidebar>
+      </div>
     </div>
   )
 }
