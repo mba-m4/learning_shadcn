@@ -3,7 +3,7 @@
  * iframe で embed.diagrams.net を埋め込み、postMessage APIで通信
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Save, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Template } from '@/types/template'
@@ -22,13 +22,40 @@ export function DrawioEditor({ template, onSave }: DrawioEditorProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [currentXml, setCurrentXml] = useState<string>('')
 
-  useEffect(() => {
-    if (!template) return
+  /**
+   * draw.io にXMLをロード
+   */
+  const loadXml = useCallback((xml: string) => {
+    if (!iframeRef.current?.contentWindow) return
 
-    // テンプレートが変更されたら、draw.io にロード
-    setCurrentXml(template.diagramXml)
-    setIsLoading(true)
-  }, [template?.id])
+    const message = {
+      action: 'load',
+      xml: xml,
+      autosave: 1,
+    }
+
+    iframeRef.current.contentWindow.postMessage(
+      JSON.stringify(message),
+      '*'
+    )
+  }, [])
+
+  /**
+   * draw.io から現在のXMLをエクスポート
+   */
+  const exportXml = useCallback(() => {
+    if (!iframeRef.current?.contentWindow) return
+
+    const message = {
+      action: 'export',
+      format: 'xml',
+    }
+
+    iframeRef.current.contentWindow.postMessage(
+      JSON.stringify(message),
+      '*'
+    )
+  }, [])
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -57,42 +84,7 @@ export function DrawioEditor({ template, onSave }: DrawioEditorProps) {
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [template])
-
-  /**
-   * draw.io にXMLをロード
-   */
-  const loadXml = (xml: string) => {
-    if (!iframeRef.current?.contentWindow) return
-
-    const message = {
-      action: 'load',
-      xml: xml,
-      autosave: 1,
-    }
-
-    iframeRef.current.contentWindow.postMessage(
-      JSON.stringify(message),
-      '*'
-    )
-  }
-
-  /**
-   * draw.io から現在のXMLをエクスポート
-   */
-  const exportXml = () => {
-    if (!iframeRef.current?.contentWindow) return
-
-    const message = {
-      action: 'export',
-      format: 'xml',
-    }
-
-    iframeRef.current.contentWindow.postMessage(
-      JSON.stringify(message),
-      '*'
-    )
-  }
+  }, [template, loadXml])
 
   /**
    * テンプレートを保存
