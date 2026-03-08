@@ -1,15 +1,16 @@
 /**
  * ドキュメントテンプレートエディタページ
- * 3カラム: テンプレート一覧 | draw.io | DB連携設定
- * shadcn/ui Sidebarコンポーネントを使用
+ * 3カラムレイアウト: テンプレート一覧 | draw.io | DB連携設定
  */
 
 import { useMemo, useState } from 'react'
+import { CardContent, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import {
   Sidebar,
   SidebarContent,
   SidebarInset,
+  SidebarProvider,
 } from '@/components/ui/sidebar'
 import { TemplateList } from '@/components/template-editor/template-list'
 import { DrawioEditor } from '@/components/template-editor/drawio-editor'
@@ -92,21 +93,25 @@ export function DocumentTemplatePage() {
   }
 
   return (
-    <>
+    <SidebarProvider>
+      {/* 左サイドバー: テンプレート一覧 */}
       <Sidebar side="left" collapsible="none">
         <SidebarContent>
           <div className="px-4 py-3">
-            <h2 className="text-sm font-semibold">テンプレート</h2>
+            <CardTitle className="text-sm font-semibold">テンプレート</CardTitle>
           </div>
           <Separator />
-          <TemplateList
-            key={refreshKey}
-            selectedTemplateId={selectedTemplate?.id}
-            onSelectTemplate={handleSelectTemplate}
-          />
+          <CardContent className="p-0">
+            <TemplateList
+              key={refreshKey}
+              selectedTemplateId={selectedTemplate?.id}
+              onSelectTemplate={handleSelectTemplate}
+            />
+          </CardContent>
         </SidebarContent>
       </Sidebar>
 
+      {/* メイン: エディタ */}
       <SidebarInset>
         <DrawioEditor
           key={selectedTemplate?.id || 'no-template'}
@@ -115,13 +120,14 @@ export function DocumentTemplatePage() {
         />
       </SidebarInset>
 
+      {/* 右サイドバー: DB連携設定 */}
       <Sidebar side="right" collapsible="none">
         <SidebarContent>
           <div className="px-4 py-3">
-            <h2 className="text-sm font-semibold">DB連携設定</h2>
+            <CardTitle className="text-sm font-semibold">DB連携設定</CardTitle>
           </div>
           <Separator />
-          <div className="space-y-4 p-4">
+          <CardContent className="space-y-4 p-4">
             <DbSelector
               tables={mockDatabaseTables}
               selectedTableName={selectedTableName}
@@ -138,9 +144,9 @@ export function DocumentTemplatePage() {
               onChange={handleChangePlaceholders}
               disabled={!selectedTemplate}
             />
-          </div>
+          </CardContent>
         </SidebarContent>
       </Sidebar>
-    </>
+    </SidebarProvider>
   )
 }

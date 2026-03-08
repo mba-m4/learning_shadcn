@@ -1,5 +1,5 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
-import { WorkspaceShell } from '@/components/layout/workspace-shell'
+import { MainLayout } from '@/components/layout/main-layout'
 import { WorkspacePage } from '@/pages/workspace-page'
 import { DocumentTemplatePage } from '@/pages/document-template-page'
 import { getAllSubmenuPaths } from '@/app/navigation-context'
@@ -17,7 +17,7 @@ export const router = createBrowserRouter([
     children: [
       {
         path: '',
-        element: <WorkspaceShell />,
+        element: <MainLayout />,
         children: [
           {
             index: true,
