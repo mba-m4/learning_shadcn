@@ -6,11 +6,22 @@ TypeScript/React の可読性・安全性・変更容易性を高める。
 
 ## 命名規則
 
-- コンポーネント: `PascalCase`
-- 関数・変数: `camelCase`
-- 定数: `UPPER_SNAKE_CASE`（必要な場合のみ）
-- 型: 役割がわかる名詞で定義
-- カスタムフック: `use` プレフィックス
+### ファイル命名規則
+
+- **すべてのファイル名**: `kebab-case` で統一（shadcn/ui に準拠）
+  - コンポーネント: `main-layout.tsx`, `workspace-page.tsx`
+  - hooks: `use-mobile.ts`
+  - stores: `counter-store.ts`
+  - utils: `page-content.ts`
+- 例外: エントリーポイント (`App.tsx`, `main.tsx`) は慣習に従う
+
+### エクスポート名の命名規則
+
+- コンポーネント: `PascalCase`（例: `MainLayout`, `WorkspacePage`）
+- 関数・変数: `camelCase`（例: `getTemplateById`, `appRoutes`）
+- 定数: `UPPER_SNAKE_CASE`（必要な場合のみ、例: `MOBILE_BREAKPOINT`）
+- 型: 役割がわかる名詞で定義（例: `RouteObject`, `Template`）
+- カスタムフック: `use` プレフィックス + `camelCase`（例: `useIsMobile`）
 - イベントハンドラ: `handle` プレフィックス（例: `handleSubmit`）
 
 ## TypeScript ルール

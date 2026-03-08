@@ -1,43 +1,21 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
-import { MainLayout } from '@/components/layout/main-layout'
-import { WorkspacePage } from '@/pages/workspace-page'
-import { DocumentTemplatePage } from '@/pages/document-template-page'
-import { getAllSubmenuPaths } from '@/app/navigation-context'
+import type { RouteObject } from 'react-router-dom'
+import { dashboardRoute } from '@/app/routes/dashboard'
+import { workspaceRoute } from '@/app/routes/workspace'
+import { documentRoute } from '@/app/routes/document'
 
-const submenuRoutes = getAllSubmenuPaths()
-  .filter((path) => path !== '/document/templates') // テンプレートページは個別に定義
-  .map((path) => ({
-    path: path.replace(/^\//, ''),
-    element: <WorkspacePage />,
-  }))
-
-export const router = createBrowserRouter([
+export const appRoutes: RouteObject[] = [
   {
     path: '/',
-    children: [
-      {
-        path: '',
-        element: <MainLayout />,
-        children: [
-          {
-            index: true,
-            element: <Navigate to="/dashboard/overview" replace />,
-          },
-          ...submenuRoutes,
-          {
-            path: 'document/knowledge/category/:category',
-            element: <WorkspacePage />,
-          },
-          {
-            path: 'document/templates',
-            element: <DocumentTemplatePage />,
-          },
-          {
-            path: '*',
-            element: <Navigate to="/dashboard/overview" replace />,
-          },
-        ],
-      },
-    ],
+    element: <Navigate to="/dashboard/overview" replace />,
   },
-])
+  dashboardRoute,
+  documentRoute,
+  workspaceRoute,
+  {
+    path: '*',
+    element: <Navigate to="/dashboard/overview" replace />,
+  },
+]
+
+export const router = createBrowserRouter(appRoutes)

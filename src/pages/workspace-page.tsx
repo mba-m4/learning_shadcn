@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom'
 import { getNavigationContext } from '@/app/navigation-context'
-import { pageContentByPath } from '@/mocks/data/page-content'
+import { useAllPageContentQuery } from '@/api/page-content'
+import { useNavigationQuery } from '@/api/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -13,6 +14,8 @@ import {
   SidebarInset,
   SidebarProvider,
 } from '@/components/ui/sidebar'
+import { LoadingSpinner } from '@/components/common/loading'
+import { ErrorFallback } from '@/components/common/error'
 
 const statusLabel = {
   stable: 'Stable',
@@ -28,7 +31,18 @@ const statusVariant = {
 
 export function WorkspacePage() {
   const location = useLocation()
-  const { topNav, submenu } = getNavigationContext(location.pathname)
+  
+  // TanStack Query でナビゲーション設定とページコンテンツを取得
+  const { data: navigationConfig, isLoading: isLoadingNav, error: navError } = useNavigationQuery()
+  const { data: pageContentByPath, isLoading: isLoadingContent, error: contentError } = useAllPageContentQuery()
+
+  if (isLoadingNav || isLoadingContent) return <LoadingSpinner />
+  if (navError) return <ErrorFallback error={navError} />
+  if (contentError) return <ErrorFallback error={contentError} />
+  if (!navigationConfig || !pageContentByPath) return null
+
+  const { topNav, submenu } = getNavigationContext(location.pathname, navigationConfig)
+
   const content =
     pageContentByPath[submenu.path] ??
     pageContentByPath['/dashboard/overview'] ?? {

@@ -1,7 +1,6 @@
-import { navigationConfig } from '@/mocks/data/navigation'
 import type { NavigationContext, SubmenuConfig, TopNavConfig } from '@/types/navigation'
 
-function matchTopNav(pathname: string): TopNavConfig {
+function matchTopNav(pathname: string, navigationConfig: TopNavConfig[]): TopNavConfig {
   return (
     navigationConfig.find(
       (topNav) =>
@@ -18,8 +17,11 @@ function matchSubmenu(pathname: string, topNav: TopNavConfig): SubmenuConfig {
   )
 }
 
-export function getNavigationContext(pathname: string): NavigationContext {
-  const topNav = matchTopNav(pathname)
+export function getNavigationContext(
+  pathname: string,
+  navigationConfig: TopNavConfig[]
+): NavigationContext {
+  const topNav = matchTopNav(pathname, navigationConfig)
   const submenu = matchSubmenu(pathname, topNav)
 
   return {
@@ -28,6 +30,6 @@ export function getNavigationContext(pathname: string): NavigationContext {
   }
 }
 
-export function getAllSubmenuPaths(): string[] {
+export function getAllSubmenuPaths(navigationConfig: TopNavConfig[]): string[] {
   return navigationConfig.flatMap((topNav) => topNav.submenus.map((submenu) => submenu.path))
 }

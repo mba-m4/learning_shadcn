@@ -5,7 +5,7 @@
 
 import { Link, useLocation } from 'react-router-dom'
 import { Bell, Search } from 'lucide-react'
-import { navigationConfig } from '@/mocks/data/navigation'
+import { useNavigationQuery } from '@/api/navigation'
 import { getNavigationContext } from '@/app/navigation-context'
 import { cn } from '@/lib/utils'
 import {
@@ -29,7 +29,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 export function AppHeader() {
   const location = useLocation()
-  const context = getNavigationContext(location.pathname)
+  const { data: navigationConfig } = useNavigationQuery()
+
+  if (!navigationConfig) return null
+
+  const context = getNavigationContext(location.pathname, navigationConfig)
 
   return (
     <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">

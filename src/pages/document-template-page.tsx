@@ -3,7 +3,7 @@
  * 3カラムレイアウト: テンプレート一覧 | draw.io | DB連携設定
  */
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { CardContent, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -17,7 +17,7 @@ import { DrawioEditor } from '@/components/template-editor/drawio-editor'
 import { DbSelector } from '@/components/template-editor/db-selector'
 import { ColumnList } from '@/components/template-editor/column-list'
 import { PlaceholderManager } from '@/components/template-editor/placeholder-manager'
-import { mockDatabaseTables, getTableByName } from '@/mocks/data/databases'
+import { useDatabaseTablesQuery, useDatabaseTableQuery } from '@/api/databases'
 import {
   getTemplateById,
   getMappingByTemplateId,
@@ -25,6 +25,8 @@ import {
   updateMapping,
 } from '@/lib/storage/templates'
 import type { PlaceholderMapping, Template } from '@/types/template'
+import { LoadingSpinner } from '@/components/common/loading'
+import { ErrorFallback } from '@/components/common/error'
 
 export function DocumentTemplatePage() {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
@@ -32,10 +34,13 @@ export function DocumentTemplatePage() {
   const [selectedTableName, setSelectedTableName] = useState('')
   const [placeholders, setPlaceholders] = useState<PlaceholderMapping[]>([])
 
-  const selectedTable = useMemo(
-    () => getTableByName(selectedTableName),
-    [selectedTableName]
-  )
+  // TanStack Query でデータベーステーブルを取得
+  const { data: mockDatabaseTables, isLoading, error } = useDatabaseTablesQuery()
+  const { data: selectedTable } = useDatabaseTableQuery(selectedTableName)
+
+  if (isLoading) return <LoadingSpinner />
+  if (error) return <ErrorFallback error={error} />
+  if (!mockDatabaseTables) return null
 
   const handleSelectTemplate = (template: Template) => {
     const latestTemplate = getTemplateById(template.id) ?? template
@@ -135,7 +140,7 @@ export function DocumentTemplatePage() {
               disabled={!selectedTemplate}
             />
 
-            <ColumnList table={selectedTable} />
+            <ColumnList table={selectedTable ?? undefined} />
 
             <PlaceholderManager
               dbTable={selectedTableName}
