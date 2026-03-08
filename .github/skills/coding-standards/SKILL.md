@@ -29,6 +29,8 @@ TypeScript/React の可読性・安全性・変更容易性を高める。
 - `useEffect` の依存配列を正しく設定
 - 副作用は `useEffect` に集約
 - Props が5つを超えたら分割を検討
+- **UI実装では常にshadcn/uiの使用を検討する（Dialog, Dropdown, Sidebar, Tabs等）**
+- asideタグやmainタグなどの汎用HTMLタグで構造を作らず、shadcn/uiの適切なコンポーネントを使用する
 
 ## 環境変数管理
 

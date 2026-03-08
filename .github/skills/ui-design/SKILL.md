@@ -7,14 +7,20 @@
 ## 基本方針
 
 - UI コンポーネントは `shadcn/ui` をベースに構築する。
+- **UIコンポーネント実装時は、常に以下の優先順位を守る：**
+  1. shadcn/ui の既存コンポーネント（Button, Card, Dialog, Sidebar等）を使用できないか確認
+  2. shadcn/ui のコンポーネント組み合わせでニーズを満たせないか検討
+  3. 必要な場合のみ、shadcn/ui をベースにドメイン特化コンポーネントを実装
 - 推論/実装時は、まず MCP の利用可否を確認してから作業を進める。
 - キーボード操作とスクリーンリーダー対応を前提に実装する。
 
 ## 実装ルール
 
-- `components/ui` に汎用UI、`components/domain` にドメインUIを配置する。
+- `components/ui` に汎用UI（shadcn/uiベース）、`components/layout` にレイアウト、`components/template-editor` などにドメインUIを配置する。
+- **asideタグやdiv、mainなどのセマンティックHTMLで構造を作らず、Sidebar、SidebarProvider等のshadcn/uiコンポーネントを使用する。**
 - フォーム要素には `label` と適切な `aria-*` を設定する。
 - デザインの一貫性を保ち、重複スタイルを避ける。
+- ページレイアウト（マルチカラム等）が必要な場合は、各ページで `SidebarProvider` + `Sidebar` + `SidebarInset` などのコンポーネント組み合わせで実装する。
 
 ## 共通UIコンポーネントの使用
 
