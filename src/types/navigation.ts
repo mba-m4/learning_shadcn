@@ -11,7 +11,8 @@ export type SubmenuConfig = {
   description: string
   icon: LucideIcon
   path: string
-  sidebarItems: SidebarItem[]
+  leftSidebarItems?: SidebarItem[]
+  rightSidebarItems?: SidebarItem[]
 }
 
 export type TopNavConfig = {

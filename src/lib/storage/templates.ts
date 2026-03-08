@@ -15,6 +15,9 @@ const STORAGE_KEYS = {
   MAPPINGS: 'template-mappings',
 } as const
 
+// draw.ioの空ダイアグラムXML（新規テンプレート用）
+export const EMPTY_DIAGRAM_XML = `<mxfile><diagram id="1" name="Page-1"><mxGraphModel dx="800" dy="450"><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel></diagram></mxfile>`
+
 /**
  * localStorage から全テンプレートを取得
  */
@@ -47,6 +50,8 @@ export function createTemplate(
   const now = new Date().toISOString()
   const newTemplate: Template = {
     ...template,
+    // diagramXmlが空の場合は、空ダイアグラムXMLを設定
+    diagramXml: template.diagramXml || EMPTY_DIAGRAM_XML,
     id: crypto.randomUUID(),
     createdAt: now,
     updatedAt: now,

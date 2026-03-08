@@ -29,14 +29,14 @@ export const router = createBrowserRouter([
             element: <WorkspacePage />,
           },
           {
+            path: 'document/templates',
+            element: <DocumentTemplatePage />,
+          },
+          {
             path: '*',
             element: <Navigate to="/dashboard/overview" replace />,
           },
         ],
-      },
-      {
-        path: 'document/templates',
-        element: <DocumentTemplatePage />,
       },
     ],
   },

@@ -48,7 +48,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'チーム全体の概要を一覧表示',
         icon: LayoutDashboard,
         path: '/dashboard/overview',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: '期間フィルタ' },
           { label: '担当範囲' },
           { label: '重要通知' },
@@ -60,7 +60,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '自分のタスクと通知',
         icon: User,
         path: '/dashboard/my-summary',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: '今週のタスク' },
           { label: '優先アラート' },
         ],
@@ -78,7 +78,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '進行中のプロジェクト',
         icon: FolderOpen,
         path: '/project/active',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: 'Overview' },
           { label: 'Members' },
           { label: 'Milestones' },
@@ -93,7 +93,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '完了済みプロジェクト',
         icon: Archive,
         path: '/project/archived',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: '完了プロジェクト' },
           { label: '保管ポリシー' },
         ],
@@ -104,7 +104,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'プロジェクトテンプレート',
         icon: FileType,
         path: '/project/templates',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: '新規テンプレート' },
           { label: 'テンプレート管理' },
         ],
@@ -122,7 +122,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '自分に割り当てられたタスク',
         icon: CheckSquare,
         path: '/task/my',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: 'ステータス' },
           { label: '優先度' },
           { label: '担当者' },
@@ -137,7 +137,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '優先順位付け待ちタスク',
         icon: Layers,
         path: '/task/backlog',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: '優先度' },
           { label: '見積り' },
           { label: '担当未割当' },
@@ -149,7 +149,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'カンバンボードビュー',
         icon: Kanban,
         path: '/task/board',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: 'スイムレーン' },
           { label: 'WIP制限' },
           { label: 'ラベル' },
@@ -161,7 +161,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'ガントチャートビュー',
         icon: GanttChartSquare,
         path: '/task/gantt',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: '依存関係' },
           { label: '期間' },
           { label: '担当者' },
@@ -180,7 +180,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'ナレッジベース',
         icon: BookOpen,
         path: '/document/knowledge',
-        sidebarItems: [
+        leftSidebarItems: [
           {
             label: 'カテゴリ',
             children: ['開発', 'インフラ', 'セキュリティ', '運用'],
@@ -199,7 +199,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '仕様書管理',
         icon: FileText,
         path: '/document/specification',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: '業務要件' },
           { label: '機能仕様' },
           { label: '非機能要件' },
@@ -211,7 +211,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '設計ドキュメント',
         icon: Palette,
         path: '/document/design',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: '画面設計' },
           { label: 'アーキ設計' },
           { label: 'API設計' },
@@ -223,7 +223,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '標準作業手順書',
         icon: FileCheck,
         path: '/document/sop',
-        sidebarItems: [{ label: '手順種別' }, { label: '更新日' }],
+        leftSidebarItems: [{ label: '手順種別' }, { label: '更新日' }],
       },
       {
         id: 'meeting-minutes',
@@ -231,7 +231,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '会議議事録',
         icon: MessageSquare,
         path: '/document/meeting-minutes',
-        sidebarItems: [{ label: '会議種別' }, { label: '参加者' }],
+        leftSidebarItems: [{ label: '会議種別' }, { label: '参加者' }],
       },
       {
         id: 'templates',
@@ -239,7 +239,6 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'ドキュメントテンプレート',
         icon: FileBox,
         path: '/document/templates',
-        sidebarItems: [{ label: 'テンプレート種別' }, { label: '利用頻度' }],
       },
       {
         id: 'archive',
@@ -247,7 +246,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'アーカイブドキュメント',
         icon: FolderArchive,
         path: '/document/archive',
-        sidebarItems: [{ label: '保管年' }, { label: 'ドメイン' }],
+        leftSidebarItems: [{ label: '保管年' }, { label: 'ドメイン' }],
       },
     ],
   },
@@ -262,7 +261,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '対応中のインシデント',
         icon: AlertCircle,
         path: '/incident/open',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: 'Severity' },
           { label: '発生システム' },
           { label: 'SLA影響' },
@@ -276,7 +275,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '解決済みインシデント',
         icon: CheckCircle,
         path: '/incident/closed',
-        sidebarItems: [{ label: 'クローズ理由' }, { label: '再発防止策' }],
+        leftSidebarItems: [{ label: 'クローズ理由' }, { label: '再発防止策' }],
       },
       {
         id: 'postmortem',
@@ -284,7 +283,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '事後分析レポート',
         icon: FileText,
         path: '/incident/postmortem',
-        sidebarItems: [{ label: '原因分類' }, { label: '再発防止策' }],
+        leftSidebarItems: [{ label: '原因分類' }, { label: '再発防止策' }],
       },
       {
         id: 'root-cause',
@@ -292,7 +291,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '根本原因分析',
         icon: GitBranch,
         path: '/incident/root-cause',
-        sidebarItems: [{ label: '5Whys' }, { label: '影響範囲' }],
+        leftSidebarItems: [{ label: '5Whys' }, { label: '影響範囲' }],
       },
     ],
   },
@@ -307,7 +306,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'AIに質問して回答を取得',
         icon: MessageSquareText,
         path: '/ai/ask',
-        sidebarItems: [
+        leftSidebarItems: [
           {
             label: '検索範囲',
             children: ['全体', 'Documentのみ', 'Incidentのみ', 'Project単位'],
@@ -325,7 +324,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '全コンテンツを横断検索',
         icon: Search,
         path: '/ai/search',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: '意味検索' },
           { label: '検索範囲' },
           { label: '関連度しきい値' },
@@ -337,7 +336,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '類似事例を検出',
         icon: GitCompare,
         path: '/ai/incident-similar',
-        sidebarItems: [{ label: 'Severity' }, { label: 'システム' }, { label: '期間' }],
+        leftSidebarItems: [{ label: 'Severity' }, { label: 'システム' }, { label: '期間' }],
       },
       {
         id: 'knowledge-suggestion',
@@ -345,7 +344,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'AIがナレッジを提案',
         icon: Lightbulb,
         path: '/ai/knowledge-suggestion',
-        sidebarItems: [{ label: '対象ドメイン' }, { label: '信頼度' }],
+        leftSidebarItems: [{ label: '対象ドメイン' }, { label: '信頼度' }],
       },
       {
         id: 'summarize',
@@ -353,7 +352,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'コンテンツを自動生成',
         icon: Sparkles,
         path: '/ai/summarize',
-        sidebarItems: [{ label: '要約長' }, { label: 'フォーマット' }],
+        leftSidebarItems: [{ label: '要約長' }, { label: 'フォーマット' }],
       },
       {
         id: 'report-generation',
@@ -361,7 +360,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'レポートを自動生成',
         icon: FileBarChart,
         path: '/ai/report-generation',
-        sidebarItems: [{ label: '対象期間' }, { label: '出力形式' }],
+        leftSidebarItems: [{ label: '対象期間' }, { label: '出力形式' }],
       },
     ],
   },
@@ -376,7 +375,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'プロジェクト進捗レポート',
         icon: TrendingUp,
         path: '/report/progress',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: '期間' },
           { label: 'プロジェクト' },
           { label: 'メンバー' },
@@ -389,7 +388,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'KPIダッシュボード',
         icon: Target,
         path: '/report/kpi',
-        sidebarItems: [{ label: 'KPIカテゴリ' }, { label: 'しきい値' }],
+        leftSidebarItems: [{ label: 'KPIカテゴリ' }, { label: 'しきい値' }],
       },
       {
         id: 'effort',
@@ -397,7 +396,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '工数集計レポート',
         icon: Clock,
         path: '/report/effort',
-        sidebarItems: [{ label: '担当者' }, { label: '期間' }],
+        leftSidebarItems: [{ label: '担当者' }, { label: '期間' }],
       },
       {
         id: 'sla',
@@ -405,7 +404,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'SLA達成状況',
         icon: Shield,
         path: '/report/sla',
-        sidebarItems: [{ label: 'サービス種別' }, { label: '違反有無' }],
+        leftSidebarItems: [{ label: 'サービス種別' }, { label: '違反有無' }],
       },
       {
         id: 'custom',
@@ -413,7 +412,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'カスタムレポート作成',
         icon: FileSpreadsheet,
         path: '/report/custom',
-        sidebarItems: [{ label: 'レポートテンプレート' }, { label: '出力形式' }],
+        leftSidebarItems: [{ label: 'レポートテンプレート' }, { label: '出力形式' }],
       },
     ],
   },
@@ -428,7 +427,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'ユーザー管理',
         icon: Users,
         path: '/admin/users',
-        sidebarItems: [
+        leftSidebarItems: [
           { label: '組織' },
           { label: '権限テンプレート' },
           { label: 'アクティビティ種別' },
@@ -440,7 +439,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'ロール・権限管理',
         icon: ShieldCheck,
         path: '/admin/roles',
-        sidebarItems: [{ label: 'ロール種別' }, { label: '権限スコープ' }],
+        leftSidebarItems: [{ label: 'ロール種別' }, { label: '権限スコープ' }],
       },
       {
         id: 'audit-logs',
@@ -448,7 +447,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: '操作ログ監査',
         icon: ScrollText,
         path: '/admin/audit-logs',
-        sidebarItems: [{ label: '実行者' }, { label: 'イベント種別' }, { label: '期間' }],
+        leftSidebarItems: [{ label: '実行者' }, { label: 'イベント種別' }, { label: '期間' }],
       },
       {
         id: 'system-settings',
@@ -456,7 +455,7 @@ export const navigationConfig: TopNavConfig[] = [
         description: 'システム設定',
         icon: Settings,
         path: '/admin/system-settings',
-        sidebarItems: [{ label: '通知設定' }, { label: 'セキュリティ設定' }],
+        leftSidebarItems: [{ label: '通知設定' }, { label: 'セキュリティ設定' }],
       },
     ],
   },
