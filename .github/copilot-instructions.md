@@ -49,6 +49,63 @@
 - `MSW` のハンドラとレスポンスは `types` と整合させる。
 - 実装後は可能な範囲で `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:run` を確認する。
 
+## APIディレクトリ構造とTanStack Query実装パターン
+
+### ディレクトリ構造
+
+- **`src/api/` 直下にシンプルなリソース名でファイルを配置**
+  - 例: `tasks.ts`, `navigation.ts`, `databases.ts`, `dashboard.ts`
+  - サブディレクトリ（`endpoints/`, `queries/`, `loaders/`）は作成しない
+  - 冗長なプレフィックス/サフィックス（`use-*-query`, `*-loader`）は使用しない
+
+### TanStack Query実装パターン
+
+- **queryFn内に直接fetch処理を記述する**
+  - 中間レイヤー（apiClient、fetchXxx関数など）を作らない
+  - TanStack Queryはキャッシュ管理ライブラリであり、HTTP clientは任意（fetchで十分）
+  
+```typescript
+// ✅ 正しい実装
+export function useTasksQuery() {
+  return useQuery({
+    queryKey: taskKeys.lists(),
+    queryFn: (): Promise<Task[]> =>
+      fetch('/api/tasks').then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch tasks')
+        return res.json()
+      }),
+  })
+}
+
+// ❌ 不要な抽象化（こうしない）
+async function fetchTasks() { /* ... */ }
+export function useTasksQuery() {
+  return useQuery({
+    queryKey: taskKeys.lists(),
+    queryFn: fetchTasks, // 不要な関数を経由している
+  })
+}
+```
+
+### React Router Loaderとの統合
+
+- ローダー関数も同じファイルに配置（例: `dashboard.ts`にdashboardOverviewLoaderを配置）
+- ローダー内でも`queryFn`に直接fetch処理を記述
+
+```typescript
+export async function dashboardOverviewLoader() {
+  await queryClient.ensureQueryData({
+    queryKey: taskKeys.lists(),
+    queryFn: (): Promise<Task[]> =>
+      fetch('/api/tasks').then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch tasks')
+        return res.json()
+      }),
+  })
+  return null
+}
+```
+
 ## Git運用ルール
 
 ### コミット粒度の原則
@@ -68,9 +125,11 @@
 
 ### コミットメッセージ
 
+- **必ず日本語で記述する**（英語禁止）
 - Conventional Commits 形式を使用（`feat:`, `fix:`, `chore:` 等）。
 - 1行目: 変更内容の要約（50文字以内推奨）。
 - 2行目以降: 必要に応じて詳細説明。
+- 例: `feat: タスク一覧ページを追加`, `fix: ナビゲーションの表示崩れを修正`
 
 ## 共通UIコンポーネント
 
