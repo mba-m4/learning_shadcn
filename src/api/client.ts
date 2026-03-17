@@ -1,5 +1,6 @@
 import axios from "axios"
+import { API_PREFIX } from "@/api/paths"
 
 export const api = axios.create({
-  baseURL: "/",
+  baseURL: API_PREFIX,
 })

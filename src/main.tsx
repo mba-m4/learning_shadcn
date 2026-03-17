@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 
 import ReactDOM from "react-dom/client"
 import { RouterProvider } from "react-router/dom"
-import { router } from "@/routers/routers"
+import { router } from "@/routers/router"
 
 const queryClient = new QueryClient()
 
