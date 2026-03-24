@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router"
 import { DocumentForm } from "@/components/documents/DocumentForm"
 import createDocumentDetailQueryOptions from "@/queries/documents/createDocumentDetailQueryOptions"
 import createUpdateDocumentMutationOptions from "@/queries/documents/createUpdateDocumentMutationOptions"
+import createProjectsQueryOptions from "@/queries/projects/createProjectsQueryOptions"
 import type { DocumentInput } from "@/types/documents"
 
 export function DocumentEditPage() {
@@ -22,19 +23,35 @@ export function DocumentEditPage() {
       enabled: Boolean(id),
     })
   )
+  const {
+    data: projects,
+    isLoading: isProjectsLoading,
+    error: projectsError,
+  } = useQuery(createProjectsQueryOptions())
 
   if (!id) {
     return <p className="p-6">Document ID is missing.</p>
   }
 
-  if (isLoading) return <p className="p-6">Loading...</p>
+  if (isLoading || isProjectsLoading) return <p className="p-6">Loading...</p>
   if (error) return <p className="p-6">Error: {error.message}</p>
+  if (projectsError) return <p className="p-6">Error: {projectsError.message}</p>
   if (!document) return <p className="p-6">Document not found.</p>
+  if (!projects || projects.length === 0) {
+    return <p className="p-6">Project data is missing.</p>
+  }
 
   const initialValues: DocumentInput = {
     title: document.title,
     description: document.description,
+    projectId: document.project.id,
+    category: document.category,
+    status: document.status,
   }
+  const projectOptions = projects.map((project) => ({
+    value: project.id,
+    label: `${project.code} | ${project.name}`,
+  }))
 
   const handleSubmit = async (values: DocumentInput) => {
     const updatedDocument = await updateMutation.mutateAsync({
@@ -54,6 +71,7 @@ export function DocumentEditPage() {
         initialValues={initialValues}
         key={id}
         onSubmit={handleSubmit}
+        projectOptions={projectOptions}
         submitLabel="更新する"
         title="Document Edit"
       />

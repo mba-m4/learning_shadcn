@@ -140,6 +140,8 @@ export const fetchSampleItems = async (): Promise<SampleItem[]> => {
 
 MSW は axios の `baseURL` を共有しないので、モック側では `/api` を含んだ path を使います。今のプロジェクトでは [src/api/paths.ts](../src/api/paths.ts) に API 用 path と MSW 用 path をまとめています。
 
+モックが少ないうちは配列を `handlers.ts` に直接置いても構いませんが、件数が増えたり CRUD の教材として再利用したくなったら、`src/mocks` 配下に mock DB を切り出す方が読みやすいです。今の documents / projects では `faker` と `@mswjs/data` を使って seed データと CRUD の保管先を分離し、`handlers.ts` は HTTP 契約とバリデーションだけを担当しています。relation が必要な場合は `oneOf` / `manyOf` を使えるよう、resource ごとの DB を分けずに app 全体の mock DB としてまとめる方が管理しやすいです。
+
 ```ts
 http.get(sampleMockPaths.list, () => {
   return HttpResponse.json([
@@ -221,12 +223,16 @@ const form = useForm({
    - [src/schema/documents.ts](../src/schema/documents.ts)
 3. API
    - [src/api/documents.ts](../src/api/documents.ts)
+  - [src/api/projects.ts](../src/api/projects.ts)
   - [src/api/paths.ts](../src/api/paths.ts)
 4. mocks
    - [src/mocks/handlers.ts](../src/mocks/handlers.ts)
+  - [src/mocks/appDb.ts](../src/mocks/appDb.ts)
 5. queries
    - [src/queries/documents/createDocumentsQueryOptions.ts](../src/queries/documents/createDocumentsQueryOptions.ts)
    - [src/queries/documents/createDocumentDetailQueryOptions.ts](../src/queries/documents/createDocumentDetailQueryOptions.ts)
+  - [src/queries/projects/createProjectsQueryOptions.ts](../src/queries/projects/createProjectsQueryOptions.ts)
+  - [src/queries/projects/createProjectDetailQueryOptions.ts](../src/queries/projects/createProjectDetailQueryOptions.ts)
    - [src/queries/documents/createDocumentCreateMutationOptions.ts](../src/queries/documents/createDocumentCreateMutationOptions.ts)
 6. store
    - [src/store/useDocumentsUiStore.ts](../src/store/useDocumentsUiStore.ts)

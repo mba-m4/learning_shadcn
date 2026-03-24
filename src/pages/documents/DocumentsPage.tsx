@@ -11,6 +11,10 @@ import {
 import createDeleteDocumentMutationOptions from "@/queries/documents/createDeleteDocumentMutationOptions"
 import createDocumentsQueryOptions from "@/queries/documents/createDocumentsQueryOptions"
 import { useDocumentsUiStore } from "@/store/useDocumentsUiStore"
+import {
+  documentCategoryLabels,
+  documentStatusLabels,
+} from "@/types/documents"
 import { cn } from "@/lib/utils"
 
 export function DocumentsPage() {
@@ -55,7 +59,8 @@ export function DocumentsPage() {
           </p>
           <h1 className="text-3xl font-semibold tracking-tight">Documents</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            一覧、検索、詳細、作成、編集、削除の基本フローを試せるテンプレートです。
+            一覧、検索、詳細、作成、編集、削除に加えて、faker と @mswjs/data
+            で生成したメタデータの扱いも試せるテンプレートです。
           </p>
         </div>
 
@@ -124,15 +129,67 @@ export function DocumentsPage() {
         {documents.map((doc) => (
           <Card key={doc.id}>
             <CardHeader>
-              <CardTitle>{doc.title}</CardTitle>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
+                      {documentCategoryLabels[doc.category]}
+                    </span>
+                    <span className="rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                      {documentStatusLabels[doc.status]}
+                    </span>
+                  </div>
+                  <CardTitle>{doc.title}</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Project: {doc.project.code} / {doc.project.name}
+                  </p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <p>{doc.ownerName}</p>
+                  <p>{doc.teamName}</p>
+                </div>
+              </div>
               <CardDescription>
-                作成日: {new Date(doc.createdAt).toLocaleDateString()}
+                作成日: {new Date(doc.createdAt).toLocaleDateString()} / 更新日:{" "}
+                {new Date(doc.updatedAt).toLocaleDateString()}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm leading-6 text-muted-foreground">
                 {doc.description || "説明はまだありません。"}
               </p>
+
+              <dl className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                <div>
+                  <dt className="font-medium text-foreground">Owner</dt>
+                  <dd>
+                    {doc.ownerName} / {doc.ownerRole}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-foreground">Contact</dt>
+                  <dd>{doc.ownerEmail}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-foreground">Project</dt>
+                  <dd>
+                    <Link className="underline-offset-4 hover:underline" to={`/projects/${doc.project.id}`}>
+                      {doc.project.code} / {doc.project.name}
+                    </Link>
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="flex flex-wrap gap-2">
+                {doc.tags.map((tag) => (
+                  <span
+                    className="rounded-full border px-2 py-1 text-xs text-muted-foreground"
+                    key={tag}
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
 
               <div className="flex flex-wrap gap-3">
                 <Link
