@@ -1,16 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import PageHeader from '@/components/layout/PageHeader'
-import { useManualStore } from '@/stores/manualStore'
+import { getErrorMessage } from '@/lib/api/client'
+import { createManualsQueryOptions } from '@/lib/api/queries/support'
 
 export default function ManualsPage() {
+  const navigate = useNavigate()
   const [query, setQuery] = useState('')
-  const { manuals, fetchManuals } = useManualStore()
-
-  useEffect(() => {
-    void fetchManuals()
-  }, [fetchManuals])
+  const manualsQuery = useQuery(createManualsQueryOptions())
+  const manuals = manualsQuery.data ?? []
 
   const filtered = manuals.filter((manual) =>
     manual.title.toLowerCase().includes(query.toLowerCase()),
@@ -40,12 +41,28 @@ export default function ManualsPage() {
           </div>
         </div>
         <div className="divide-y">
+          {manualsQuery.error && (
+            <div className="px-6 py-4 text-sm text-destructive">
+              {getErrorMessage(manualsQuery.error)}
+            </div>
+          )}
+          {manualsQuery.isLoading && (
+            <div className="px-6 py-4 text-sm text-muted-foreground">読み込み中...</div>
+          )}
+          {!manualsQuery.isLoading && filtered.length === 0 && (
+            <div className="px-6 py-4 text-sm text-muted-foreground">該当する手順書はありません。</div>
+          )}
           {filtered.map((manual) => (
-            <div key={manual.id} className="px-6 py-4">
+            <button
+              key={manual.id}
+              type="button"
+              onClick={() => navigate(`/manuals/${manual.id}`)}
+              className="w-full px-6 py-4 text-left transition-colors hover:bg-slate-50"
+            >
               <p className="text-sm font-semibold text-slate-900">{manual.title}</p>
               <p className="text-xs text-muted-foreground">{manual.category}</p>
               <p className="mt-2 text-sm text-muted-foreground">{manual.summary}</p>
-            </div>
+            </button>
           ))}
         </div>
       </div>

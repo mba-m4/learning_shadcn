@@ -1,5 +1,12 @@
 import type { MyWork, WorkAsset, MyWorkListResponse } from '@/types/api'
 import { request } from './client'
+import {
+  myWorkListResponseSchema,
+  myWorkSchema,
+  workAssetSchema,
+  workFilesPayloadSchema,
+  workNotePayloadSchema,
+} from './schemas/support'
 
 export const fetchMyWorks = (params?: {
   limit?: number
@@ -10,29 +17,34 @@ export const fetchMyWorks = (params?: {
   if (params?.offset) query.set('offset', String(params.offset))
 
   const queryString = query.toString()
-  return request<MyWorkListResponse>(`/my-works${queryString ? `?${queryString}` : ''}`)
+  return request<MyWorkListResponse>(
+    `/my-works${queryString ? `?${queryString}` : ''}`,
+    undefined,
+    true,
+    myWorkListResponseSchema,
+  )
 }
 
 export const fetchMyWork = (workId: number) =>
-  request<MyWork>(`/my-works/${workId}`)
+  request<MyWork>(`/my-works/${workId}`, undefined, true, myWorkSchema)
 
 export const fetchWorkAssets = (workId: number) =>
-  request<WorkAsset>(`/my-works/${workId}/assets`)
+  request<WorkAsset>(`/my-works/${workId}/assets`, undefined, true, workAssetSchema)
 
 export const addWorkPhotos = (workId: number, files: string[]) =>
   request<WorkAsset>(`/my-works/${workId}/assets/photos`, {
     method: 'POST',
-    body: JSON.stringify({ files }),
-  })
+    body: workFilesPayloadSchema.parse({ files }),
+  }, true, workAssetSchema)
 
 export const addWorkAudios = (workId: number, files: string[]) =>
   request<WorkAsset>(`/my-works/${workId}/assets/audios`, {
     method: 'POST',
-    body: JSON.stringify({ files }),
-  })
+    body: workFilesPayloadSchema.parse({ files }),
+  }, true, workAssetSchema)
 
 export const addWorkNote = (workId: number, note: string) =>
   request<WorkAsset>(`/my-works/${workId}/assets/notes`, {
     method: 'POST',
-    body: JSON.stringify({ note }),
-  })
+    body: workNotePayloadSchema.parse({ note }),
+  }, true, workAssetSchema)

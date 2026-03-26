@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import PageHeader from '@/components/layout/PageHeader'
+import { getErrorMessage } from '@/lib/api/client'
+import { createConfigCatalogQueryOptions } from '@/lib/api/queries/config'
+import {
+  createCreateNotificationMutationOptions,
+  createNotificationsQueryOptions,
+} from '@/lib/api/queries/support'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,7 +28,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useNotificationStore } from '@/stores/notificationStore'
 
 const typeLabel: Record<'info' | 'warning' | 'urgent' | 'success', string> = {
   info: '情報',
@@ -39,7 +45,6 @@ const typeStyles: Record<'info' | 'warning' | 'urgent' | 'success', string> = {
 
 export default function NotificationsPage() {
   const navigate = useNavigate()
-  const { notifications, fetchNotifications, addNotification, loading, error } = useNotificationStore()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [type, setType] = useState<'info' | 'warning' | 'urgent' | 'success'>('info')
@@ -48,9 +53,13 @@ export default function NotificationsPage() {
   const [noExpiry, setNoExpiry] = useState(false)
   const [pinned, setPinned] = useState(false)
 
-  useEffect(() => {
-    void fetchNotifications()
-  }, [fetchNotifications])
+  const notificationsQuery = useQuery(createNotificationsQueryOptions({ limit: 100 }))
+  const configCatalogQuery = useQuery(createConfigCatalogQueryOptions())
+  const createNotificationMutation = useMutation(
+    createCreateNotificationMutationOptions({ limit: 100 }),
+  )
+  const notifications = notificationsQuery.data ?? []
+  const notificationTypes = configCatalogQuery.data?.notificationTypes ?? Object.keys(typeLabel)
 
   const sortedNotifications = useMemo(() => {
     return [...notifications].sort((a, b) => {
@@ -80,7 +89,7 @@ export default function NotificationsPage() {
       displayUntil = until.toISOString()
     }
     try {
-      await addNotification({
+      await createNotificationMutation.mutateAsync({
         title: title.trim(),
         content: content.trim(),
         type,
@@ -96,8 +105,8 @@ export default function NotificationsPage() {
       setDisplayDays('7')
       setNoExpiry(false)
       setPinned(false)
-    } catch {
-      toast.error('お知らせの追加に失敗しました。')
+    } catch (error) {
+      toast.error(getErrorMessage(error))
     }
   }
 
@@ -107,7 +116,7 @@ export default function NotificationsPage() {
         title="お知らせ管理"
         subtitle="全体通知を作成・管理します。"
         actions={
-          <Button variant="outline" size="sm" onClick={() => fetchNotifications()}>
+          <Button variant="outline" size="sm" onClick={() => void notificationsQuery.refetch()}>
             再読み込み
           </Button>
         }
@@ -151,9 +160,9 @@ export default function NotificationsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(typeLabel).map(([value, label]) => (
+                {notificationTypes.map((value) => (
                   <SelectItem key={value} value={value}>
-                    {label}
+                    {typeLabel[value]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -210,7 +219,12 @@ export default function NotificationsPage() {
             </div>
           </div>
           <div className="lg:col-span-2">
-            <Button type="submit" disabled={!title.trim() || !content.trim()}>
+            <Button
+              type="submit"
+              disabled={
+                !title.trim() || !content.trim() || createNotificationMutation.isPending
+              }
+            >
               追加
             </Button>
           </div>
@@ -232,8 +246,10 @@ export default function NotificationsPage() {
           </div>
         </div>
         <div className="px-6 py-4">
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {loading ? (
+          {notificationsQuery.error && (
+            <p className="text-sm text-destructive">{getErrorMessage(notificationsQuery.error)}</p>
+          )}
+          {notificationsQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">読み込み中...</p>
           ) : sortedNotifications.length === 0 ? (
             <p className="text-sm text-muted-foreground">お知らせはまだ登録されていません。</p>

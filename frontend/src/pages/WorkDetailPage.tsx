@@ -1,28 +1,40 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
 import CommentForm from '@/components/comments/CommentForm'
 import CommentList from '@/components/comments/CommentList'
 import RiskActionSection from '@/components/work/RiskActionSection'
 import WorkItemList from '@/components/work/WorkItemList'
 import { RiskAcknowledgmentDialog } from '@/components/work/RiskAcknowledgmentDialog'
 import { IncidentCreateDialog } from '@/components/work/IncidentCreateDialog'
-import { deleteRiskAssessment, updateRiskAssessment } from '@/lib/api/risks'
-import { generateRisk, fetchWorkDetail } from '@/lib/api/works'
 import { getErrorMessage } from '@/lib/api/client'
+import {
+  createIncidentMutationOptions,
+  createIncidentsQueryOptions,
+} from '@/lib/api/queries/incidents'
+import { queryKeys } from '@/lib/api/queryKeys'
+import { createWorkAcknowledgmentQueryOptions } from '@/lib/api/queries/safety'
+import {
+  createAddWorkCommentMutationOptions,
+  createManualRisksQueryOptions,
+  createWorkCommentsQueryOptions,
+} from '@/lib/api/queries/support'
+import { createManualsQueryOptions } from '@/lib/api/queries/support'
+import { createWorkDetailQueryOptions } from '@/lib/api/queries/works'
+import {
+  createManualRisk,
+  deleteManualRisk,
+  deleteRiskAssessment,
+  updateManualRisk,
+  updateRiskAssessment,
+} from '@/lib/api/risks'
+import { generateRisk } from '@/lib/api/works'
 import { useAuthStore } from '@/stores/authStore'
-import { useCommentStore } from '@/stores/commentStore'
-import { useRiskStore } from '@/stores/riskStore'
-import { useWorkStore } from '@/stores/workStore'
-import { useSafetyStore } from '@/stores/safetyStore'
-import { useIncidentStore } from '@/stores/incidentStore'
-import { useManualStore } from '@/stores/manualStore'
-import { CheckCircle2 } from 'lucide-react'
-import type { Role, WorkOverview } from '@/types/api'
+import type { ManualRisk, Role } from '@/types/api'
 
 const canCommentRoles: Role[] = ['leader', 'worker']
 
@@ -30,37 +42,149 @@ export default function WorkDetailPage() {
   const { workId } = useParams()
   const workIdNumber = Number(workId)
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { currentUser, loginId } = useAuthStore()
-  const { date, dailyOverview, fetchDailyOverview, loadingDaily } = useWorkStore()
-  const {
-    commentsByWorkId,
-    loadingByWorkId,
-    fetchComments,
-    addComment,
-  } = useCommentStore()
-  const {
-    manualRisksByItemId,
-    fetchManualRisks,
-    addManualRisk,
-    updateManualRisk,
-    deleteManualRisk,
-  } = useRiskStore()
-  const { acknowledgments, fetchAcknowledgment } = useSafetyStore()
-  const { incidents, createIncident, fetchIncidents } = useIncidentStore()
-  const { manuals, fetchManuals } = useManualStore()
-  const [detail, setDetail] = useState<WorkOverview | null>(null)
-  const [loadingDetail, setLoadingDetail] = useState(false)
-  const [detailError, setDetailError] = useState<string | null>(null)
   const [showAcknowledgmentDialog, setShowAcknowledgmentDialog] = useState(false)
   const [showIncidentDialog, setShowIncidentDialog] = useState(false)
 
-  const overview = useMemo(() => {
-    return dailyOverview.find((item) => item.work.id === workIdNumber)
-  }, [dailyOverview, workIdNumber])
+  const workDetailQuery = useQuery({
+    ...createWorkDetailQueryOptions(workIdNumber),
+    enabled: Number.isFinite(workIdNumber),
+  })
+  const commentsQuery = useQuery({
+    ...createWorkCommentsQueryOptions(workIdNumber),
+    enabled: Number.isFinite(workIdNumber),
+  })
+  const acknowledgmentQuery = useQuery({
+    ...createWorkAcknowledgmentQueryOptions(workIdNumber),
+    enabled: Number.isFinite(workIdNumber),
+  })
+  const incidentsQuery = useQuery(createIncidentsQueryOptions())
+  const manualsQuery = useQuery(createManualsQueryOptions())
+
+  const detail = workDetailQuery.data
+  const manualRiskQueries = useQueries({
+    queries: (detail?.items ?? []).map(({ item }) => ({
+      ...createManualRisksQueryOptions(item.id),
+      enabled: Boolean(detail),
+    })),
+  })
+
+  const manualRisksByItemId = useMemo<Record<number, ManualRisk[]>>(() => {
+    if (!detail) {
+      return {}
+    }
+
+    return detail.items.reduce<Record<number, ManualRisk[]>>((accumulator, entry, index) => {
+      accumulator[entry.item.id] = manualRiskQueries[index]?.data ?? []
+      return accumulator
+    }, {})
+  }, [detail, manualRiskQueries])
+
+  const createCommentMutation = useMutation(
+    createAddWorkCommentMutationOptions(workIdNumber),
+  )
+  const createIncidentMutation = useMutation(createIncidentMutationOptions())
+  const addManualRiskMutation = useMutation({
+    mutationFn: ({
+      itemId,
+      content,
+      action,
+    }: {
+      itemId: number
+      content: string
+      action?: string | null
+    }) => createManualRisk(itemId, content, action),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.manualRisks(variables.itemId),
+      })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.acknowledgment(workIdNumber),
+      })
+    },
+  })
+  const updateManualRiskMutation = useMutation({
+    mutationFn: ({
+      riskId,
+      payload,
+    }: {
+      riskId: number
+      payload: { content?: string | null; action?: string | null }
+    }) => updateManualRisk(riskId, payload),
+    onSuccess: async (_data, variables) => {
+      const itemId = detail?.items.find(({ item }) =>
+        manualRisksByItemId[item.id]?.some((risk) => risk.id === variables.riskId),
+      )?.item.id
+      if (itemId) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.works.manualRisks(itemId),
+        })
+      }
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.acknowledgment(workIdNumber),
+      })
+    },
+  })
+  const deleteManualRiskMutation = useMutation({
+    mutationFn: ({ riskId }: { riskId: number }) => deleteManualRisk(riskId),
+    onSuccess: async (_data, variables) => {
+      const itemId = detail?.items.find(({ item }) =>
+        manualRisksByItemId[item.id]?.some((risk) => risk.id === variables.riskId),
+      )?.item.id
+      if (itemId) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.works.manualRisks(itemId),
+        })
+      }
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.acknowledgment(workIdNumber),
+      })
+    },
+  })
+  const generateRiskMutation = useMutation({
+    mutationFn: ({ itemId }: { itemId: number }) => generateRisk(itemId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.detail(workIdNumber),
+      })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.acknowledgment(workIdNumber),
+      })
+    },
+  })
+  const updateAiRiskMutation = useMutation({
+    mutationFn: ({
+      riskId,
+      payload,
+    }: {
+      riskId: number
+      payload: { content?: string | null; action?: string | null }
+    }) => updateRiskAssessment(riskId, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.detail(workIdNumber),
+      })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.acknowledgment(workIdNumber),
+      })
+    },
+  })
+  const deleteAiRiskMutation = useMutation({
+    mutationFn: ({ riskId }: { riskId: number }) => deleteRiskAssessment(riskId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.detail(workIdNumber),
+      })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.acknowledgment(workIdNumber),
+      })
+    },
+  })
 
   const relatedIncidents = useMemo(() => {
-    return incidents.filter((incident) => incident.work_id === workIdNumber)
-  }, [incidents, workIdNumber])
+    return (incidentsQuery.data ?? []).filter((incident) => incident.work_id === workIdNumber)
+  }, [incidentsQuery.data, workIdNumber])
 
   const relatedIncidentsSorted = useMemo(() => {
     return [...relatedIncidents].sort((a, b) => b.date.localeCompare(a.date))
@@ -70,19 +194,21 @@ export default function WorkDetailPage() {
     if (!detail) {
       return { total: 0, items: [] as Array<{ id: string; content: string; source: string }> }
     }
+
     const manual = Object.values(manualRisksByItemId).flat().map((risk) => ({
       id: `manual-${risk.id}`,
       content: risk.content,
       source: '手入力',
     }))
-    const ai = detail.items
-      .flatMap((entry) => entry.risks ?? [])
-      .map((risk) => ({
+    const ai = detail.items.flatMap((entry) =>
+      entry.risks.map((risk) => ({
         id: `ai-${risk.id}`,
         content: risk.content,
         source: 'AI',
-      }))
+      })),
+    )
     const combined = [...manual, ...ai]
+
     return {
       total: combined.length,
       items: combined.slice(0, 3),
@@ -90,67 +216,16 @@ export default function WorkDetailPage() {
   }, [detail, manualRisksByItemId])
 
   const relatedManuals = useMemo(() => {
-    return [...manuals]
+    return [...(manualsQuery.data ?? [])]
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
       .slice(0, 3)
-  }, [manuals])
+  }, [manualsQuery.data])
 
-  useEffect(() => {
-    if (!workIdNumber) {
-      return
-    }
-    if (overview) {
-      setDetail(overview)
-      setDetailError(null)
-      return
-    }
-
-    let cancelled = false
-    setLoadingDetail(true)
-    setDetailError(null)
-
-    fetchWorkDetail(workIdNumber)
-      .then((data) => {
-        if (cancelled) return
-        setDetail(data)
-      })
-      .catch((error) => {
-        if (cancelled) return
-        setDetailError(getErrorMessage(error))
-      })
-      .finally(() => {
-        if (cancelled) return
-        setLoadingDetail(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [overview, workIdNumber])
-
-  useEffect(() => {
-    if (!dailyOverview.length) {
-      void fetchDailyOverview(date)
-    }
-  }, [dailyOverview.length, date, fetchDailyOverview])
-
-  useEffect(() => {
-    if (workIdNumber) {
-      void fetchComments(workIdNumber)
-      void fetchAcknowledgment(workIdNumber)
-      void fetchIncidents()
-      void fetchManuals()
-    }
-  }, [fetchComments, workIdNumber, fetchAcknowledgment, fetchIncidents, fetchManuals])
-
-  useEffect(() => {
-    if (!detail) {
-      return
-    }
-    detail.items.forEach(({ item }) => {
-      void fetchManualRisks(item.id)
-    })
-  }, [detail, fetchManualRisks])
+  const canGenerate = currentUser?.role === 'leader'
+  const canComment = currentUser ? canCommentRoles.includes(currentUser.role) : false
+  const canManual = canComment
+  const comments = commentsQuery.data ?? []
+  const acknowledgment = acknowledgmentQuery.data ?? null
 
   const handleCreateIncident = async (data: {
     title: string
@@ -159,51 +234,33 @@ export default function WorkDetailPage() {
     corrective_actions: string[]
     work_id?: number
   }) => {
-    const created = await createIncident({
-      ...data,
-      date: new Date().toISOString().split('T')[0],
-      status: 'open',
-    })
-
-    if (created) {
+    try {
+      await createIncidentMutation.mutateAsync({
+        ...data,
+        date: new Date().toISOString().split('T')[0],
+        status: 'open',
+      })
       toast.success('インシデントを登録しました。')
-      await fetchIncidents()
-    } else {
-      toast.error('登録に失敗しました。')
+    } catch (error) {
+      toast.error(getErrorMessage(error))
     }
   }
 
   const handleGenerateRisk = async (itemId: number) => {
     try {
-      const created = await generateRisk(itemId)
-      setDetail((prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          items: prev.items.map((entry) =>
-            entry.item.id === itemId
-              ? {
-                  ...entry,
-                  risks: [created, ...entry.risks.filter((risk) => risk.id !== created.id)],
-                }
-              : entry,
-          ),
-        }
-      })
+      await generateRiskMutation.mutateAsync({ itemId })
       toast.success('リスクを生成しました。')
-      await fetchDailyOverview(date)
-      void fetchAcknowledgment(workIdNumber)
     } catch (error) {
-      toast.error('リスク生成に失敗しました。')
+      toast.error(getErrorMessage(error))
     }
   }
 
   const handleAddComment = async (content: string) => {
-    const created = await addComment(workIdNumber, content)
-    if (created) {
+    try {
+      await createCommentMutation.mutateAsync({ content })
       toast.success('コメントを追加しました。')
-    } else {
-      toast.error('コメントの追加に失敗しました。')
+    } catch (error) {
+      toast.error(getErrorMessage(error))
     }
   }
 
@@ -212,14 +269,14 @@ export default function WorkDetailPage() {
     content: string,
     action?: string | null,
   ) => {
-    const created = await addManualRisk(itemId, content, action)
-    if (created) {
+    try {
+      await addManualRiskMutation.mutateAsync({ itemId, content, action })
       toast.success('手入力リスクを追加しました。')
-      void fetchAcknowledgment(workIdNumber)
       return true
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+      return false
     }
-    toast.error('手入力リスクの追加に失敗しました。')
-    return false
   }
 
   const handleUpdateManualRisk = async (
@@ -227,99 +284,71 @@ export default function WorkDetailPage() {
     riskId: number,
     payload: { content?: string | null; action?: string | null },
   ) => {
-    const updated = await updateManualRisk(itemId, riskId, payload)
-    if (updated) {
+    try {
+      await updateManualRiskMutation.mutateAsync({ riskId, payload })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.manualRisks(itemId),
+      })
       toast.success('リスクを更新しました。')
-      void fetchAcknowledgment(workIdNumber)
       return true
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+      return false
     }
-    toast.error('リスクの更新に失敗しました。')
-    return false
   }
 
   const handleDeleteManualRisk = async (itemId: number, riskId: number) => {
-    const deleted = await deleteManualRisk(itemId, riskId)
-    if (deleted) {
+    try {
+      await deleteManualRiskMutation.mutateAsync({ riskId })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.works.manualRisks(itemId),
+      })
       toast.success('リスクを削除しました。')
-      void fetchAcknowledgment(workIdNumber)
       return true
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+      return false
     }
-    toast.error('リスクの削除に失敗しました。')
-    return false
   }
 
   const handleUpdateAiRisk = async (
-    itemId: number,
+    _itemId: number,
     riskId: number,
     payload: { content?: string | null; action?: string | null },
   ) => {
     try {
-      const updated = await updateRiskAssessment(riskId, payload)
-      setDetail((prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          items: prev.items.map((entry) =>
-            entry.item.id === itemId
-              ? {
-                  ...entry,
-                  risks: entry.risks.map((risk) =>
-                    risk.id === riskId ? updated : risk,
-                  ),
-                }
-              : entry,
-          ),
-        }
-      })
+      await updateAiRiskMutation.mutateAsync({ riskId, payload })
       toast.success('リスクを更新しました。')
-      void fetchAcknowledgment(workIdNumber)
       return true
     } catch (error) {
-      toast.error('リスクの更新に失敗しました。')
+      toast.error(getErrorMessage(error))
       return false
     }
   }
 
-  const handleDeleteAiRisk = async (itemId: number, riskId: number) => {
+  const handleDeleteAiRisk = async (_itemId: number, riskId: number) => {
     try {
-      await deleteRiskAssessment(riskId)
-      setDetail((prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          items: prev.items.map((entry) =>
-            entry.item.id === itemId
-              ? {
-                  ...entry,
-                  risks: entry.risks.filter((risk) => risk.id !== riskId),
-                }
-              : entry,
-          ),
-        }
-      })
+      await deleteAiRiskMutation.mutateAsync({ riskId })
       toast.success('リスクを削除しました。')
-      void fetchAcknowledgment(workIdNumber)
       return true
     } catch (error) {
-      toast.error('リスクの削除に失敗しました。')
+      toast.error(getErrorMessage(error))
       return false
     }
   }
 
-  if (!workIdNumber) {
+  if (Number.isNaN(workIdNumber)) {
     return <p className="text-sm">作業IDが不正です。</p>
   }
 
-  if ((loadingDaily || loadingDetail) && !detail) {
+  if (workDetailQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">読み込み中...</p>
   }
 
-  if (!detail) {
+  if (workDetailQuery.error) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          {detailError ?? '作業情報が見つかりませんでした。'}
-        </p>
+        <p className="text-sm text-muted-foreground">{getErrorMessage(workDetailQuery.error)}</p>
         <Button variant="outline" onClick={() => navigate('/dashboard')}>
           ダッシュボードに戻る
         </Button>
@@ -327,21 +356,26 @@ export default function WorkDetailPage() {
     )
   }
 
-  const canGenerate = currentUser?.role === 'leader'
-  const canComment = currentUser ? canCommentRoles.includes(currentUser.role) : false
-  const canManual = canComment
-  const comments = commentsByWorkId[workIdNumber] || []
+  if (!detail) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">作業情報が見つかりませんでした。</p>
+        <Button variant="outline" onClick={() => navigate('/dashboard')}>
+          ダッシュボードに戻る
+        </Button>
+      </div>
+    )
+  }
 
-  const statusLabel = {
+  const statusLabel: Record<'draft' | 'confirmed', string> = {
     draft: '下書き',
     confirmed: '確定',
   }
 
-  const statusTone = {
+  const statusTone: Record<'draft' | 'confirmed', string> = {
     draft: 'text-amber-700 bg-amber-50',
     confirmed: 'text-emerald-700 bg-emerald-50',
   }
-
 
   return (
     <div className="space-y-6">
@@ -360,18 +394,18 @@ export default function WorkDetailPage() {
           </div>
           <div className="flex flex-col items-end gap-3">
             <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className={`rounded-full px-2 py-0.5 font-semibold ${statusTone[detail.work.status]}`}>
-              {statusLabel[detail.work.status]}
-            </span>
-            <span className="rounded-full border border-border/60 px-2 py-0.5 text-muted-foreground">
-              作業日: {detail.work.work_date}
-            </span>
-            <span className="rounded-full border border-border/60 px-2 py-0.5 text-muted-foreground">
-              グループ: {detail.work.group_id}
-            </span>
-            <span className="rounded-full border border-border/60 px-2 py-0.5 text-muted-foreground">
-              作業ID: {detail.work.id}
-            </span>
+              <span className={`rounded-full px-2 py-0.5 font-semibold ${statusTone[detail.work.status]}`}>
+                {statusLabel[detail.work.status]}
+              </span>
+              <span className="rounded-full border border-border/60 px-2 py-0.5 text-muted-foreground">
+                作業日: {detail.work.work_date}
+              </span>
+              <span className="rounded-full border border-border/60 px-2 py-0.5 text-muted-foreground">
+                グループ: {detail.work.group_id}
+              </span>
+              <span className="rounded-full border border-border/60 px-2 py-0.5 text-muted-foreground">
+                作業ID: {detail.work.id}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => navigate('/works/explorer')}>
@@ -465,17 +499,16 @@ export default function WorkDetailPage() {
         </div>
       </section>
 
-      {/* リスク確認状態 */}
       {detail.items.length > 0 && (
         <section className="rounded-xl border border-border/60 bg-white px-6 py-6">
-          {acknowledgments[workIdNumber] ? (
+          {acknowledgment ? (
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                 <div>
                   <p className="font-semibold text-green-900">✓ リスク確認済み</p>
                   <p className="text-sm text-green-700">
-                    {new Date(acknowledgments[workIdNumber].acknowledged_at).toLocaleString('ja-JP')}
+                    {new Date(acknowledgment.acknowledged_at).toLocaleString('ja-JP')}
                   </p>
                 </div>
               </div>
@@ -582,8 +615,11 @@ export default function WorkDetailPage() {
           </p>
           <h2 className="mt-2 text-xl font-semibold text-slate-900">コメント</h2>
         </div>
-        <div className="p-6 space-y-4">
-          <CommentList comments={comments} loading={loadingByWorkId[workIdNumber]} />
+        <div className="space-y-4 p-6">
+          {commentsQuery.error && (
+            <p className="text-sm text-destructive">{getErrorMessage(commentsQuery.error)}</p>
+          )}
+          <CommentList comments={comments} loading={commentsQuery.isLoading} />
           <Separator className="bg-border/40" />
           <CommentForm disabled={!canComment} onSubmit={handleAddComment} />
           {!canComment && (
@@ -594,23 +630,19 @@ export default function WorkDetailPage() {
         </div>
       </section>
 
-      {/* リスク確認ダイアログ */}
-      {detail && (
-        <RiskAcknowledgmentDialog
-          open={showAcknowledgmentDialog}
-          onOpenChange={setShowAcknowledgmentDialog}
-          work={detail}
-          manualRisksByItemId={manualRisksByItemId}
-          mode={acknowledgments[workIdNumber] ? 'view' : 'confirm'}
-          acknowledgment={acknowledgments[workIdNumber] ?? null}
-          loginId={loginId}
-          onComplete={() => {
-            void fetchAcknowledgment(workIdNumber)
-          }}
-        />
-      )}
+      <RiskAcknowledgmentDialog
+        open={showAcknowledgmentDialog}
+        onOpenChange={setShowAcknowledgmentDialog}
+        work={detail}
+        manualRisksByItemId={manualRisksByItemId}
+        mode={acknowledgment ? 'view' : 'confirm'}
+        acknowledgment={acknowledgment}
+        loginId={loginId}
+        onComplete={() => {
+          void acknowledgmentQuery.refetch()
+        }}
+      />
 
-      {/* インシデント作成ダイアログ */}
       <IncidentCreateDialog
         open={showIncidentDialog}
         onOpenChange={setShowIncidentDialog}

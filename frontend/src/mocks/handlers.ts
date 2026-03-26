@@ -22,6 +22,73 @@ import type {
   WorkAsset,
   Notification,
 } from '@/types/api'
+import { mockConfigCatalog, mockDb, mockDbReaders } from './db'
+
+const mapMockUser = (user: {
+  id: number
+  name: string
+  role: string
+  is_active: boolean
+  contact?: string
+}): User => ({
+  id: user.id,
+  name: user.name,
+  role: user.role as User['role'],
+  is_active: user.is_active,
+  contact: user.contact ?? null,
+})
+
+const mapMockNotification = (notification: {
+  id: number
+  title: string
+  content: string
+  type: string
+  created_at: string
+  is_read: boolean
+  link?: string
+  display_until?: string | null
+  pinned: boolean
+}): Notification => ({
+  id: notification.id,
+  title: notification.title,
+  content: notification.content,
+  type: notification.type as Notification['type'],
+  created_at: notification.created_at,
+  is_read: notification.is_read,
+  link: notification.link || undefined,
+  display_until: notification.display_until || null,
+  pinned: notification.pinned,
+})
+
+const mapMockMeeting = (meeting: {
+  id: number
+  title: string
+  date: string
+  participants: string[]
+  transcript: string
+  sync_state: string
+  extracted_risks: RiskRecord[]
+}): Meeting => ({
+  id: meeting.id,
+  title: meeting.title,
+  date: meeting.date,
+  participants: meeting.participants,
+  transcript: meeting.transcript,
+  extracted_risks: meeting.extracted_risks,
+  sync_state: meeting.sync_state,
+})
+
+const mapMockMeetingUpload = (upload: {
+  id: number
+  meeting_id?: number | null
+  filename: string
+  created_at: string
+}): MeetingUpload => ({
+  id: upload.id,
+  meeting_id: upload.meeting_id ?? null,
+  filename: upload.filename,
+  created_at: upload.created_at,
+})
 
 // モック データ
 const mockUser: User = {
@@ -470,52 +537,62 @@ export const handlers = [
   }),
 
   http.get('*/auth/me', () => {
-    return HttpResponse.json<User>(mockUser, { status: 200 })
+    const currentUser = mockDbReaders.getCurrentUser()
+    return HttpResponse.json<User>(currentUser ? mapMockUser(currentUser) : mockUser, { status: 200 })
   }),
 
   // ===== グループ =====
   http.get('*/works/groups', () => {
-    return HttpResponse.json<WorkGroup[]>(mockGroups, { status: 200 })
+    const groups = mockDbReaders.listWorkGroups()
+    return HttpResponse.json<WorkGroup[]>(groups.length > 0 ? groups : mockGroups, { status: 200 })
   }),
 
   // ===== 作業一覧 =====
   http.get('*/works/daily', ({ request }) => {
     const url = new URL(request.url)
-    url.searchParams.get('work_date')
-    // モック: 本日の作業を返す
-    return HttpResponse.json(
-      mockWorks.map((work) => ({
-        work,
-        items: mockWorkItems
-          .filter((item) => item.work_id === work.id)
-          .map((item) => ({
-            item,
-            risks: mockAiRisks.filter((risk) => risk.work_item_id === item.id),
-          })),
-      })),
-      { status: 200 }
-    )
+    const workDate = url.searchParams.get('work_date') ?? undefined
+    const items = mockDbReaders.listWorkOverviews(workDate)
+    return HttpResponse.json(items.length > 0 ? items : mockWorks.map((work) => ({
+      work,
+      items: mockWorkItems
+        .filter((item) => item.work_id === work.id)
+        .map((item) => ({
+          item,
+          risks: mockAiRisks.filter((risk) => risk.work_item_id === item.id),
+        })),
+    })), { status: 200 })
   }),
 
   http.get('*/works/list', ({ request }) => {
     const url = new URL(request.url)
     const limit = Number(url.searchParams.get('limit')) || 20
     const offset = Number(url.searchParams.get('offset')) || 0
+    const startDate = url.searchParams.get('start_date')
+    const endDate = url.searchParams.get('end_date')
+    const source = mockDbReaders.listWorkOverviews().filter(({ work }) => {
+      if (startDate && work.work_date < startDate) return false
+      if (endDate && work.work_date > endDate) return false
+      return true
+    })
+    const pageItems = (source.length > 0 ? source : mockWorks.map((work) => ({
+      work,
+      items: mockWorkItems.filter((item) => item.work_id === work.id).map((item) => ({ item, risks: [] })),
+    }))).slice(offset, offset + limit)
 
     return HttpResponse.json<WorkListPage>(
       {
-        items: mockWorks.map((work) => ({
-          work,
-          items: mockWorkItems.filter((item) => item.work_id === work.id),
+        items: pageItems.map(({ work, items }) => ({
+          work: work as Work,
+          items: items.map((entry) => entry.item),
           risk_count:
-            mockRisks.filter((risk) =>
-              mockWorkItems.find((item) => item.id === risk.work_item_id && item.work_id === work.id)
+            mockDbReaders.listManualRisks().filter((risk) =>
+              items.some((entry) => entry.item.id === risk.work_item_id),
             ).length +
-            mockAiRisks.filter((risk) =>
-              mockWorkItems.find((item) => item.id === risk.work_item_id && item.work_id === work.id)
+            mockDbReaders.listAiRisks().filter((risk) =>
+              items.some((entry) => entry.item.id === risk.work_item_id),
             ).length,
         })),
-        total: mockWorks.length,
+        total: source.length > 0 ? source.length : mockWorks.length,
         limit,
         offset,
       },
@@ -524,28 +601,48 @@ export const handlers = [
   }),
 
   http.get('*/works/dates', () => {
-    return HttpResponse.json(mockWorkDateSummary, { status: 200 })
+    const workDateSummary = Object.values(
+      mockDbReaders.listWorks().reduce<Record<string, { work_date: string; count: number }>>((accumulator, work) => {
+        accumulator[work.work_date] = {
+          work_date: work.work_date,
+          count: (accumulator[work.work_date]?.count ?? 0) + 1,
+        }
+        return accumulator
+      }, {}),
+    )
+    return HttpResponse.json(workDateSummary.length > 0 ? workDateSummary : mockWorkDateSummary, { status: 200 })
   }),
 
   http.get('*/works', ({ request }) => {
     const url = new URL(request.url)
     const limit = Number(url.searchParams.get('limit')) || 20
     const offset = Number(url.searchParams.get('offset')) || 0
+    const startDate = url.searchParams.get('start_date')
+    const endDate = url.searchParams.get('end_date')
+    const source = mockDbReaders.listWorkOverviews().filter(({ work }) => {
+      if (startDate && work.work_date < startDate) return false
+      if (endDate && work.work_date > endDate) return false
+      return true
+    })
+    const pageItems = (source.length > 0 ? source : mockWorks.map((work) => ({
+      work,
+      items: mockWorkItems.filter((item) => item.work_id === work.id).map((item) => ({ item, risks: [] })),
+    }))).slice(offset, offset + limit)
 
     return HttpResponse.json<WorkListPage>(
       {
-        items: mockWorks.map((work) => ({
-          work,
-          items: mockWorkItems.filter((item) => item.work_id === work.id),
+        items: pageItems.map(({ work, items }) => ({
+          work: work as Work,
+          items: items.map((entry) => entry.item),
           risk_count:
-            mockRisks.filter((risk) =>
-              mockWorkItems.find((item) => item.id === risk.work_item_id && item.work_id === work.id)
+            mockDbReaders.listManualRisks().filter((risk) =>
+              items.some((entry) => entry.item.id === risk.work_item_id),
             ).length +
-            mockAiRisks.filter((risk) =>
-              mockWorkItems.find((item) => item.id === risk.work_item_id && item.work_id === work.id)
+            mockDbReaders.listAiRisks().filter((risk) =>
+              items.some((entry) => entry.item.id === risk.work_item_id),
             ).length,
         })),
-        total: mockWorks.length,
+        total: source.length > 0 ? source.length : mockWorks.length,
         limit,
         offset,
       },
@@ -555,50 +652,37 @@ export const handlers = [
 
   http.get('*/works/:workId', ({ params }) => {
     const workId = Number(params.workId)
-    const work = mockWorks.find((w) => w.id === workId)
+    const workOverview = mockDbReaders.getWorkOverview(workId)
 
-    if (!work) {
+    if (!workOverview) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    return HttpResponse.json(
-      {
-        work,
-        items: mockWorkItems
-          .filter((item) => item.work_id === workId)
-          .map((item) => ({
-            item,
-            risks: mockAiRisks.filter((risk) => risk.work_item_id === item.id),
-          })),
-      },
-      { status: 200 }
-    )
+    return HttpResponse.json(workOverview, { status: 200 })
   }),
 
   http.post('*/works', async ({ request }) => {
     const body = (await request.json()) as Partial<Work>
-    const newWork: Work = {
-      id: mockWorks.length + 1,
+    const newWork = mockDb.work.create({
+      id: mockDb.work.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
       title: body.title || '',
       description: body.description || '',
       group_id: body.group_id || 1,
       work_date: body.work_date || new Date().toISOString().split('T')[0],
       status: body.status || 'draft',
-    }
-    mockWorks.push(newWork)
+    })
     return HttpResponse.json(newWork, { status: 201 })
   }),
 
   // ===== 作業項目 =====
   http.post('*/works/:workId/items', async ({ request, params }) => {
     const body = (await request.json()) as Partial<WorkItem>
-    const newItem: WorkItem = {
-      id: mockWorkItems.length + 1,
+    const newItem = mockDb.workItem.create({
+      id: mockDb.workItem.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
       work_id: Number(params.workId),
       name: body.name || '',
       description: body.description || '',
-    }
-    mockWorkItems.push(newItem)
+    })
     return HttpResponse.json(newItem, { status: 201 })
   }),
 
@@ -629,56 +713,54 @@ export const handlers = [
 
   http.get('*/works/items/:itemId/risks/manual', ({ params }) => {
     const itemId = Number(params.itemId)
-    const risks = mockRisks.filter((risk) => risk.work_item_id === itemId)
+    const risks = mockDbReaders.listManualRisks(itemId)
     return HttpResponse.json<ManualRisk[]>(risks, { status: 200 })
   }),
 
   http.post('*/works/items/:itemId/risks/manual', async ({ request, params }) => {
     const body = (await request.json()) as { content: string; action?: string | null }
-    const nextId = mockRisks.reduce((maxId, risk) => Math.max(maxId, risk.id), 0) + 1
-    const newRisk: ManualRisk = {
-      id: nextId,
+    const newRisk = mockDb.manualRisk.create({
+      id: mockDb.manualRisk.getAll().reduce((maxId, risk) => Math.max(maxId, risk.id), 0) + 1,
       work_item_id: Number(params.itemId),
       content: body.content,
-      action: body.action ?? null,
+      action: body.action ?? '',
       created_at: new Date().toISOString(),
-    }
-    mockRisks.push(newRisk)
-    const workItem = mockWorkItems.find((item) => item.id === newRisk.work_item_id)
+    })
+    const workItem = mockDb.workItem.getAll().find((item) => item.id === newRisk.work_item_id)
     if (workItem) {
       mockRiskChangeAtByWorkId[workItem.work_id] = new Date().toISOString()
     }
-    return HttpResponse.json(newRisk, { status: 201 })
+    return HttpResponse.json({ ...newRisk, action: newRisk.action || null }, { status: 201 })
   }),
 
   http.patch('*/works/items/risks/manual/:riskId', async ({ request, params }) => {
     const body = (await request.json()) as { content?: string | null; action?: string | null }
     const riskId = Number(params.riskId)
-    const risk = mockRisks.find((item) => item.id === riskId)
+    const risk = mockDb.manualRisk.update({
+      where: { id: { equals: riskId } },
+      data: {
+        ...(body.content !== undefined ? { content: body.content ?? '' } : {}),
+        ...(body.action !== undefined ? { action: body.action ?? '' } : {}),
+      },
+    })
     if (!risk) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    if (body.content !== undefined) {
-      risk.content = body.content ?? ''
-    }
-    if (body.action !== undefined) {
-      risk.action = body.action ?? null
-    }
-    const workItem = mockWorkItems.find((item) => item.id === risk.work_item_id)
+    const workItem = mockDb.workItem.getAll().find((item) => item.id === risk.work_item_id)
     if (workItem) {
       mockRiskChangeAtByWorkId[workItem.work_id] = new Date().toISOString()
     }
-    return HttpResponse.json(risk, { status: 200 })
+    return HttpResponse.json({ ...risk, action: risk.action || null }, { status: 200 })
   }),
 
   http.delete('*/works/items/risks/manual/:riskId', ({ params }) => {
     const riskId = Number(params.riskId)
-    const index = mockRisks.findIndex((item) => item.id === riskId)
-    if (index === -1) {
+    const risk = mockDb.manualRisk.getAll().find((item) => item.id === riskId)
+    if (!risk) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    const removed = mockRisks.splice(index, 1)[0]
-    const workItem = mockWorkItems.find((item) => item.id === removed.work_item_id)
+    mockDb.manualRisk.delete({ where: { id: { equals: riskId } } })
+    const workItem = mockDb.workItem.getAll().find((item) => item.id === risk.work_item_id)
     if (workItem) {
       mockRiskChangeAtByWorkId[workItem.work_id] = new Date().toISOString()
     }
@@ -687,51 +769,48 @@ export const handlers = [
 
   // ===== AI リスク =====
   http.post('*/works/items/:itemId/risks/generate', ({ params }) => {
-    const nextId =
-      mockAiRisks.reduce((maxId, risk) => Math.max(maxId, risk.id), 99) + 1
-    const assessment: RiskAssessment = {
-      id: nextId,
+    const assessment = mockDb.aiRisk.create({
+      id: mockDb.aiRisk.getAll().reduce((maxId, risk) => Math.max(maxId, risk.id), 99) + 1,
       work_item_id: Number(params.itemId),
       content: 'AI-generated risk assessment',
-      action: null,
+      action: '',
       generated_at: new Date().toISOString(),
-    }
-    mockAiRisks.push(assessment)
-    const workItem = mockWorkItems.find((item) => item.id === assessment.work_item_id)
+    })
+    const workItem = mockDb.workItem.getAll().find((item) => item.id === assessment.work_item_id)
     if (workItem) {
       mockRiskChangeAtByWorkId[workItem.work_id] = new Date().toISOString()
     }
-    return HttpResponse.json(assessment, { status: 201 })
+    return HttpResponse.json({ ...assessment, action: assessment.action || null }, { status: 201 })
   }),
 
   http.patch('*/works/items/risks/ai/:riskId', async ({ request, params }) => {
     const body = (await request.json()) as { content?: string | null; action?: string | null }
     const riskId = Number(params.riskId)
-    const risk = mockAiRisks.find((item) => item.id === riskId)
+    const risk = mockDb.aiRisk.update({
+      where: { id: { equals: riskId } },
+      data: {
+        ...(body.content !== undefined ? { content: body.content ?? '' } : {}),
+        ...(body.action !== undefined ? { action: body.action ?? '' } : {}),
+      },
+    })
     if (!risk) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    if (body.content !== undefined) {
-      risk.content = body.content ?? ''
-    }
-    if (body.action !== undefined) {
-      risk.action = body.action ?? null
-    }
-    const workItem = mockWorkItems.find((item) => item.id === risk.work_item_id)
+    const workItem = mockDb.workItem.getAll().find((item) => item.id === risk.work_item_id)
     if (workItem) {
       mockRiskChangeAtByWorkId[workItem.work_id] = new Date().toISOString()
     }
-    return HttpResponse.json(risk, { status: 200 })
+    return HttpResponse.json({ ...risk, action: risk.action || null }, { status: 200 })
   }),
 
   http.delete('*/works/items/risks/ai/:riskId', ({ params }) => {
     const riskId = Number(params.riskId)
-    const index = mockAiRisks.findIndex((item) => item.id === riskId)
-    if (index === -1) {
+    const risk = mockDb.aiRisk.getAll().find((item) => item.id === riskId)
+    if (!risk) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    const removed = mockAiRisks.splice(index, 1)[0]
-    const workItem = mockWorkItems.find((item) => item.id === removed.work_item_id)
+    mockDb.aiRisk.delete({ where: { id: { equals: riskId } } })
+    const workItem = mockDb.workItem.getAll().find((item) => item.id === risk.work_item_id)
     if (workItem) {
       mockRiskChangeAtByWorkId[workItem.work_id] = new Date().toISOString()
     }
@@ -739,14 +818,8 @@ export const handlers = [
   }),
 
   // ===== リスク判定 =====
-  http.get('*/works/:workId/risk-summary', () => {
-    const summary: RiskSummary = {
-      work_id: 1,
-      level: 'medium',
-      score: 65,
-      reasons: ['高温配管リスク', '締結状態不明確'],
-      updated_at: new Date().toISOString(),
-    }
+  http.get('*/works/:workId/risk-summary', ({ params }) => {
+    const summary: RiskSummary = mockDbReaders.getRiskSummary(Number(params.workId))
     return HttpResponse.json(summary, { status: 200 })
   }),
 
@@ -865,7 +938,8 @@ export const handlers = [
 
   // ===== 事故 =====
   http.get('*/incidents', () => {
-    return HttpResponse.json<Incident[]>(mockIncidents, { status: 200 })
+    const incidents = mockDbReaders.listIncidents()
+    return HttpResponse.json<Incident[]>(incidents.length > 0 ? incidents : mockIncidents, { status: 200 })
   }),
 
   http.post('*/incidents', async ({ request }) => {
@@ -881,41 +955,39 @@ export const handlers = [
       labels?: string[]
     }
     const now = new Date().toISOString()
-    const incident: Incident = {
+    const incident = mockDb.incident.create({
       id: nextIncidentId(),
       title: body.title,
       type: body.type,
       date: body.date,
       root_cause: body.root_cause,
-      corrective_actions: body.corrective_actions ?? [],
+      corrective_actions_json: JSON.stringify(body.corrective_actions ?? []),
       status: body.status ?? 'open',
-      work_id: body.work_id ?? null,
-      work_title: body.work_id ? mockWorks.find((w) => w.id === body.work_id)?.title ?? null : null,
-      assignee_id: body.assignee_id ?? null,
-      assignee_name: body.assignee_id ? mockUsers.find((u) => u.id === body.assignee_id)?.name ?? null : null,
-      labels: body.labels ?? [],
+      work_id: body.work_id ?? 0,
+      work_title: body.work_id ? mockDb.work.getAll().find((w) => w.id === body.work_id)?.title ?? '' : '',
+      assignee_id: body.assignee_id ?? 0,
+      assignee_name: body.assignee_id ? mockDb.user.getAll().find((u) => u.id === body.assignee_id)?.name ?? '' : '',
+      labels_json: JSON.stringify(body.labels ?? []),
       created_at: now,
       updated_at: now,
-    }
-    mockIncidents.unshift(incident)
-    mockIncidentComments[incident.id] = []
-    mockIncidentActivities[incident.id] = [
-      {
-        id: Object.values(mockIncidentActivities).flat().length + 1,
-        incident_id: incident.id,
-        user_id: mockUser.id,
-        user_name: mockUser.name,
-        action_type: 'created',
-        content: `${incident.type === 'incident' ? 'インシデント' : 'ヒヤリハット'}を作成しました`,
-        created_at: now,
-      },
-    ]
-    return HttpResponse.json(incident, { status: 201 })
+    })
+    mockDb.incidentActivity.create({
+      id: mockDb.incidentActivity.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
+      incident_id: incident.id,
+      user_id: mockUser.id,
+      user_name: mockUser.name,
+      action_type: 'created',
+      content: `${body.type === 'incident' ? 'インシデント' : 'ヒヤリハット'}を作成しました`,
+      old_value: '',
+      new_value: '',
+      created_at: now,
+    })
+    return HttpResponse.json(mockDbReaders.getIncident(incident.id), { status: 201 })
   }),
 
   http.get('*/incidents/:incidentId', ({ params }) => {
     const incidentId = Number(params.incidentId)
-    const incident = mockIncidents.find((item) => item.id === incidentId)
+    const incident = mockDbReaders.getIncident(incidentId)
     if (!incident) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
@@ -925,258 +997,285 @@ export const handlers = [
   http.patch('*/incidents/:incidentId/status', async ({ request, params }) => {
     const body = (await request.json()) as { status: Incident['status'] }
     const incidentId = Number(params.incidentId)
-    const incident = mockIncidents.find((item) => item.id === incidentId)
+    const current = mockDbReaders.getIncident(incidentId)
+    const incident = mockDb.incident.update({
+      where: { id: { equals: incidentId } },
+      data: {
+        status: body.status,
+        updated_at: new Date().toISOString(),
+      },
+    })
     if (!incident) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    const oldStatus = incident.status
-    incident.status = body.status
-    incident.updated_at = new Date().toISOString()
-
-    // アクティビティを追加
-    const activities = mockIncidentActivities[incidentId] || []
-    activities.push({
-      id: Object.values(mockIncidentActivities).flat().length + 1,
+    mockDb.incidentActivity.create({
+      id: mockDb.incidentActivity.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
       incident_id: incidentId,
       user_id: mockUser.id,
       user_name: mockUser.name,
       action_type: 'status_change',
       content: 'ステータスを変更しました',
-      old_value: oldStatus,
+      old_value: current?.status ?? '',
       new_value: body.status,
       created_at: incident.updated_at,
     })
-    mockIncidentActivities[incidentId] = activities
-    return HttpResponse.json(incident, { status: 200 })
+    return HttpResponse.json(mockDbReaders.getIncident(incidentId), { status: 200 })
   }),
 
   http.post('*/incidents/:incidentId/actions', async ({ request, params }) => {
     const body = (await request.json()) as { action: string }
     const incidentId = Number(params.incidentId)
-    const incident = mockIncidents.find((item) => item.id === incidentId)
+    const current = mockDbReaders.getIncident(incidentId)
+    const incident = mockDb.incident.update({
+      where: { id: { equals: incidentId } },
+      data: {
+        corrective_actions_json: JSON.stringify([body.action, ...(current?.corrective_actions ?? [])]),
+        updated_at: new Date().toISOString(),
+      },
+    })
     if (!incident) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    incident.corrective_actions = [body.action, ...incident.corrective_actions]
-    incident.updated_at = new Date().toISOString()
-    return HttpResponse.json(incident, { status: 200 })
+    return HttpResponse.json(mockDbReaders.getIncident(incidentId), { status: 200 })
   }),
 
   // ===== インシデント コメント =====
   http.get('*/incidents/:incidentId/comments', ({ params }) => {
     const incidentId = Number(params.incidentId)
-    const comments = mockIncidentComments[incidentId] || []
-    return HttpResponse.json<IncidentComment[]>(comments, { status: 200 })
+    const comments = mockDbReaders.listIncidentComments(incidentId)
+    return HttpResponse.json<IncidentComment[]>(comments.length > 0 ? comments : (mockIncidentComments[incidentId] || []), { status: 200 })
   }),
 
   http.post('*/incidents/:incidentId/comments', async ({ request, params }) => {
     const body = (await request.json()) as { content: string }
     const incidentId = Number(params.incidentId)
-    const incident = mockIncidents.find((item) => item.id === incidentId)
+    const incident = mockDb.incident.getAll().find((item) => item.id === incidentId)
     if (!incident) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
     const now = new Date().toISOString()
-    const newComment: IncidentComment = {
-      id: Object.values(mockIncidentComments).flat().length + 1,
+    const newComment = mockDb.incidentComment.create({
+      id: mockDb.incidentComment.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
       incident_id: incidentId,
       user_id: mockUser.id,
       user_name: mockUser.name,
       content: body.content,
       created_at: now,
-    }
-    mockIncidentComments[incidentId] = [...(mockIncidentComments[incidentId] || []), newComment]
-    incident.updated_at = now
-    return HttpResponse.json(newComment, { status: 201 })
+      updated_at: '',
+    })
+    mockDb.incident.update({ where: { id: { equals: incidentId } }, data: { updated_at: now } })
+    mockDb.incidentActivity.create({
+      id: mockDb.incidentActivity.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
+      incident_id: incidentId,
+      user_id: mockUser.id,
+      user_name: mockUser.name,
+      action_type: 'comment',
+      content: body.content,
+      old_value: '',
+      new_value: '',
+      created_at: now,
+    })
+    return HttpResponse.json({ ...newComment, updated_at: undefined }, { status: 201 })
   }),
 
   http.patch('*/incidents/:incidentId/comments/:commentId', async ({ request, params }) => {
     const body = (await request.json()) as { content: string }
-    const incidentId = Number(params.incidentId)
     const commentId = Number(params.commentId)
-    const comments = mockIncidentComments[incidentId] || []
-    const comment = comments.find((c) => c.id === commentId)
+    const comment = mockDb.incidentComment.update({
+      where: { id: { equals: commentId } },
+      data: { content: body.content, updated_at: new Date().toISOString() },
+    })
     if (!comment) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    comment.content = body.content
-    comment.updated_at = new Date().toISOString()
-    return HttpResponse.json(comment, { status: 200 })
+    return HttpResponse.json({ ...comment, updated_at: comment.updated_at || undefined }, { status: 200 })
   }),
 
   http.delete('*/incidents/:incidentId/comments/:commentId', ({ params }) => {
-    const incidentId = Number(params.incidentId)
     const commentId = Number(params.commentId)
-    const comments = mockIncidentComments[incidentId] || []
-    const index = comments.findIndex((c) => c.id === commentId)
-    if (index === -1) {
+    const comment = mockDb.incidentComment.getAll().find((entry) => entry.id === commentId)
+    if (!comment) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    comments.splice(index, 1)
+    mockDb.incidentComment.delete({ where: { id: { equals: commentId } } })
     return HttpResponse.json({ deleted: true }, { status: 200 })
   }),
 
   // ===== インシデント アクティビティ =====
   http.get('*/incidents/:incidentId/activities', ({ params }) => {
     const incidentId = Number(params.incidentId)
-    const activities = mockIncidentActivities[incidentId] || []
-    return HttpResponse.json<IncidentActivity[]>(activities, { status: 200 })
+    const activities = mockDbReaders.listIncidentActivities(incidentId)
+    return HttpResponse.json<IncidentActivity[]>(activities.length > 0 ? activities : (mockIncidentActivities[incidentId] || []), { status: 200 })
   }),
 
   // ===== インシデント 担当者 =====
   http.patch('*/incidents/:incidentId/assignment', async ({ request, params }) => {
     const body = (await request.json()) as { assignee_id: number | null }
     const incidentId = Number(params.incidentId)
-    const incident = mockIncidents.find((item) => item.id === incidentId)
+    const current = mockDbReaders.getIncident(incidentId)
+    const incident = mockDb.incident.update({
+      where: { id: { equals: incidentId } },
+      data: {
+        assignee_id: body.assignee_id ?? 0,
+        assignee_name: body.assignee_id
+          ? mockDb.user.getAll().find((u) => u.id === body.assignee_id)?.name ?? ''
+          : '',
+        updated_at: new Date().toISOString(),
+      },
+    })
     if (!incident) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    const oldAssignee = incident.assignee_name
-    incident.assignee_id = body.assignee_id
-    incident.assignee_name = body.assignee_id
-      ? mockUsers.find((u) => u.id === body.assignee_id)?.name ?? null
-      : null
-    incident.updated_at = new Date().toISOString()
-
-    // アクティビティを追加
-    const activities = mockIncidentActivities[incidentId] || []
-    activities.push({
-      id: Object.values(mockIncidentActivities).flat().length + 1,
+    mockDb.incidentActivity.create({
+      id: mockDb.incidentActivity.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
       incident_id: incidentId,
       user_id: mockUser.id,
       user_name: mockUser.name,
       action_type: 'assignment',
       content: body.assignee_id ? '担当者を割り当てました' : '担当者を解除しました',
-      old_value: oldAssignee ?? undefined,
-      new_value: incident.assignee_name ?? undefined,
+      old_value: current?.assignee_name ?? '',
+      new_value: incident.assignee_name || '',
       created_at: incident.updated_at,
     })
-    mockIncidentActivities[incidentId] = activities
-    return HttpResponse.json(incident, { status: 200 })
+    return HttpResponse.json(mockDbReaders.getIncident(incidentId), { status: 200 })
   }),
 
   // ===== インシデント ラベル =====
   http.post('*/incidents/:incidentId/labels', async ({ request, params }) => {
     const body = (await request.json()) as { label: string }
     const incidentId = Number(params.incidentId)
-    const incident = mockIncidents.find((item) => item.id === incidentId)
+    const current = mockDbReaders.getIncident(incidentId)
+    const incident = mockDb.incident.update({
+      where: { id: { equals: incidentId } },
+      data: {
+        labels_json: JSON.stringify([...(current?.labels ?? []), body.label]),
+        updated_at: new Date().toISOString(),
+      },
+    })
     if (!incident) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    if (!incident.labels.includes(body.label)) {
-      incident.labels.push(body.label)
-      incident.updated_at = new Date().toISOString()
-
-      // アクティビティを追加
-      const activities = mockIncidentActivities[incidentId] || []
-      activities.push({
-        id: Object.values(mockIncidentActivities).flat().length + 1,
+    if (!(current?.labels ?? []).includes(body.label)) {
+      mockDb.incidentActivity.create({
+        id: mockDb.incidentActivity.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
         incident_id: incidentId,
         user_id: mockUser.id,
         user_name: mockUser.name,
         action_type: 'label_added',
         content: `ラベル「${body.label}」を追加しました`,
+        old_value: '',
         new_value: body.label,
         created_at: incident.updated_at,
       })
-      mockIncidentActivities[incidentId] = activities
     }
-    return HttpResponse.json(incident, { status: 200 })
+    return HttpResponse.json(mockDbReaders.getIncident(incidentId), { status: 200 })
   }),
 
   http.delete('*/incidents/:incidentId/labels/:label', ({ params }) => {
     const incidentId = Number(params.incidentId)
-    const label = params.label as string
-    const incident = mockIncidents.find((item) => item.id === incidentId)
+    const label = decodeURIComponent(String(params.label))
+    const current = mockDbReaders.getIncident(incidentId)
+    const incident = mockDb.incident.update({
+      where: { id: { equals: incidentId } },
+      data: {
+        labels_json: JSON.stringify((current?.labels ?? []).filter((entry) => entry !== label)),
+        updated_at: new Date().toISOString(),
+      },
+    })
     if (!incident) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    const index = incident.labels.indexOf(label)
-    if (index !== -1) {
-      incident.labels.splice(index, 1)
-      incident.updated_at = new Date().toISOString()
-
-      // アクティビティを追加
-      const activities = mockIncidentActivities[incidentId] || []
-      activities.push({
-        id: Object.values(mockIncidentActivities).flat().length + 1,
+    if ((current?.labels ?? []).includes(label)) {
+      mockDb.incidentActivity.create({
+        id: mockDb.incidentActivity.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
         incident_id: incidentId,
         user_id: mockUser.id,
         user_name: mockUser.name,
         action_type: 'label_removed',
         content: `ラベル「${label}」を削除しました`,
         old_value: label,
+        new_value: '',
         created_at: incident.updated_at,
       })
-      mockIncidentActivities[incidentId] = activities
     }
-    return HttpResponse.json(incident, { status: 200 })
+    return HttpResponse.json(mockDbReaders.getIncident(incidentId), { status: 200 })
   }),
 
   // ===== ユーザー =====
   http.get('*/users', () => {
-    return HttpResponse.json<User[]>(mockUsers, { status: 200 })
+    const users = mockDbReaders.listUsers().map(mapMockUser)
+    return HttpResponse.json<User[]>(users.length > 0 ? users : mockUsers, { status: 200 })
   }),
 
   // ===== 会議 =====
   http.get('*/meetings', () => {
-    return HttpResponse.json<Meeting[]>(mockMeetings, { status: 200 })
+    const meetings = mockDbReaders.listMeetings().map(mapMockMeeting)
+    return HttpResponse.json<Meeting[]>(meetings.length > 0 ? meetings : mockMeetings, { status: 200 })
   }),
 
   http.get('*/meetings/uploads', ({ request }) => {
     const url = new URL(request.url)
     const meetingIdParam = url.searchParams.get('meeting_id')
     const meetingId = meetingIdParam ? Number(meetingIdParam) : null
-    const uploads = mockMeetingUploads.filter((item) =>
+    const uploads = mockDbReaders.listMeetingUploads().filter((item) =>
       meetingIdParam ? item.meeting_id === meetingId : item.meeting_id === null
-    )
-    return HttpResponse.json<MeetingUpload[]>(uploads, { status: 200 })
+    ).map(mapMockMeetingUpload)
+    return HttpResponse.json<MeetingUpload[]>(uploads.length > 0 ? uploads : mockMeetingUploads, { status: 200 })
   }),
 
   http.post('*/meetings/uploads', async ({ request }) => {
     const body = (await request.json()) as { meeting_id?: number | null; files: string[] }
     const now = new Date().toISOString()
     const created = body.files.map((filename) => {
-      const upload: MeetingUpload = {
-        id: mockMeetingUploads.length + 1 + Math.floor(Math.random() * 1000),
-        meeting_id: body.meeting_id ?? null,
+      const upload = mockDb.meetingUpload.create({
+        id: mockDb.meetingUpload.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
+        meeting_id: body.meeting_id ?? undefined,
         filename,
         created_at: now,
-      }
-      mockMeetingUploads.push(upload)
-      return upload
+      })
+      return mapMockMeetingUpload({
+        ...upload,
+        meeting_id: upload.meeting_id || null,
+      })
     })
     return HttpResponse.json(created, { status: 201 })
   }),
 
   http.get('*/meetings/:meetingId', ({ params }) => {
     const meetingId = Number(params.meetingId)
-    const meeting = mockMeetings.find((item) => item.id === meetingId)
+    const meeting = mockDbReaders.listMeetings().find((item) => item.id === meetingId)
     if (!meeting) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    return HttpResponse.json(meeting, { status: 200 })
+    return HttpResponse.json(mapMockMeeting(meeting), { status: 200 })
   }),
 
   http.patch('*/meetings/:meetingId/sync-state', async ({ request, params }) => {
     const body = (await request.json()) as { sync_state: string }
     const meetingId = Number(params.meetingId)
-    const meeting = mockMeetings.find((item) => item.id === meetingId)
+    const meeting = mockDb.meeting.update({
+      where: { id: { equals: meetingId } },
+      data: { sync_state: body.sync_state },
+    })
     if (!meeting) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    meeting.sync_state = body.sync_state
-    return HttpResponse.json(meeting, { status: 200 })
+    return HttpResponse.json(mapMockMeeting({
+      ...meeting,
+      participants: JSON.parse(meeting.participants_json) as string[],
+      extracted_risks: [],
+    }), { status: 200 })
   }),
 
   // ===== 手順書 =====
   http.get('*/manuals', () => {
-    return HttpResponse.json<Manual[]>(mockManuals, { status: 200 })
+    const manuals = mockDbReaders.listManuals()
+    return HttpResponse.json<Manual[]>(manuals.length > 0 ? manuals : mockManuals, { status: 200 })
   }),
 
   http.get('*/manuals/:manualId', ({ params }) => {
     const manualId = Number(params.manualId)
-    const manual = mockManuals.find((item) => item.id === manualId)
+    const manual = mockDbReaders.listManuals().find((item) => item.id === manualId)
     if (!manual) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
@@ -1186,20 +1285,19 @@ export const handlers = [
   // ===== コメント =====
   http.get('*/works/:workId/comments', ({ params }) => {
     const workId = Number(params.workId)
-    const comments = mockComments.filter((c) => c.work_id === workId)
-    return HttpResponse.json<WorkComment[]>(comments, { status: 200 })
+    const comments = mockDbReaders.listWorkComments(workId)
+    return HttpResponse.json<WorkComment[]>(comments.length > 0 ? comments : mockComments.filter((comment) => comment.work_id === workId), { status: 200 })
   }),
 
   http.post('*/works/:workId/comments', async ({ request, params }) => {
     const body = (await request.json()) as { content: string }
-    const newComment: WorkComment = {
-      id: mockComments.length + 1,
+    const newComment = mockDb.workComment.create({
+      id: mockDb.workComment.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
       work_id: Number(params.workId),
       user_id: mockUser.id,
       content: body.content,
       created_at: new Date().toISOString(),
-    }
-    mockComments.push(newComment)
+    })
     return HttpResponse.json(newComment, { status: 201 })
   }),
 
@@ -1218,7 +1316,7 @@ export const handlers = [
     }
     const workId = Number(params.workId)
     const acknowledgment: WorkRiskAcknowledgment = {
-      id: Date.now(),
+      id: mockDb.acknowledgment.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
       work_id: workId,
       user_id: mockUser.id,
       acknowledged_at: new Date().toISOString(),
@@ -1226,10 +1324,15 @@ export const handlers = [
       acknowledged_risk_ids: body.acknowledged_risk_ids ?? [],
       acknowledged_risks: body.acknowledged_risks ?? [],
     }
-    mockAcknowledgments[workId] = [
-      acknowledgment,
-      ...(mockAcknowledgments[workId] || []),
-    ]
+    mockDb.acknowledgment.create({
+      id: acknowledgment.id,
+      work_id: acknowledgment.work_id,
+      user_id: acknowledgment.user_id,
+      acknowledged_at: acknowledgment.acknowledged_at,
+      signature_base64: acknowledgment.signature_base64 ?? '',
+      acknowledged_risk_ids_json: JSON.stringify(acknowledgment.acknowledged_risk_ids),
+      acknowledged_risks_json: JSON.stringify(acknowledgment.acknowledged_risks),
+    })
     mockRiskChangeAtByWorkId[workId] = mockRiskChangeAtByWorkId[workId] ??
       new Date(acknowledgment.acknowledged_at).toISOString()
     return HttpResponse.json(acknowledgment, { status: 201 })
@@ -1237,10 +1340,14 @@ export const handlers = [
 
   http.get('*/works/:workId/acknowledgment', ({ params }) => {
     const workId = Number(params.workId)
-    const history = mockAcknowledgments[workId] || []
+    const history = mockDbReaders.listAcknowledgments(workId)
     const acknowledgment = history[0]
     if (!acknowledgment) {
-      return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+      const fallback = (mockAcknowledgments[workId] || [])[0]
+      if (!fallback) {
+        return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      return HttpResponse.json(fallback, { status: 200 })
     }
     const riskChangedAt = mockRiskChangeAtByWorkId[workId]
     if (riskChangedAt && riskChangedAt > acknowledgment.acknowledged_at) {
@@ -1251,8 +1358,8 @@ export const handlers = [
 
   http.get('*/works/:workId/acknowledgments/history', ({ params }) => {
     const workId = Number(params.workId)
-    const history = mockAcknowledgments[workId] || []
-    return HttpResponse.json(history, { status: 200 })
+    const history = mockDbReaders.listAcknowledgments(workId)
+    return HttpResponse.json(history.length > 0 ? history : (mockAcknowledgments[workId] || []), { status: 200 })
   }),
 
   // ===== 監査ログ =====
@@ -1272,16 +1379,39 @@ export const handlers = [
     )
   }),
 
+  // ===== 設定 =====
+  http.get('*/config/catalog', () => {
+    return HttpResponse.json(mockConfigCatalog, { status: 200 })
+  }),
+
   // ===== 通知 =====
   http.get('*/notifications', ({ request }) => {
     const url = new URL(request.url)
     const unreadOnly = url.searchParams.get('unread_only') === 'true'
     const limit = Number(url.searchParams.get('limit')) || 10
     
-    let filtered = unreadOnly ? mockNotifications.filter((n) => !n.is_read) : mockNotifications
+    const source = mockDbReaders.listNotifications().map(mapMockNotification)
+    let filtered = unreadOnly
+      ? source.filter((n) => !n.is_read)
+      : (source.length > 0 ? source : mockNotifications)
+    filtered = filtered.sort(
+      (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
+    )
     filtered = filtered.slice(0, limit)
     
     return HttpResponse.json<Notification[]>(filtered, { status: 200 })
+  }),
+
+  http.get('*/notifications/:notificationId', ({ params }) => {
+    const notificationId = Number(params.notificationId)
+    const notification = mockDbReaders
+      .listNotifications()
+      .map(mapMockNotification)
+      .find((item) => item.id === notificationId)
+    if (!notification) {
+      return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    return HttpResponse.json(notification, { status: 200 })
   }),
 
   http.post('*/notifications', async ({ request }) => {
@@ -1293,28 +1423,37 @@ export const handlers = [
       display_until?: string | null
       pinned?: boolean
     }
-    const created: Notification = {
-      id: nextNotificationId(),
+    const created = mockDb.notification.create({
+      id: Math.max(nextNotificationId(), mockDb.notification.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1),
       title: body.title,
       content: body.content,
       type: body.type,
-      link: body.link,
+      link: body.link ?? '',
       created_at: new Date().toISOString(),
       is_read: false,
-      display_until: body.display_until ?? null,
+      display_until: body.display_until ?? '',
       pinned: body.pinned ?? false,
-    }
-    mockNotifications.unshift(created)
-    return HttpResponse.json(created, { status: 201 })
+    })
+    return HttpResponse.json(mapMockNotification({
+      ...created,
+      link: created.link || undefined,
+      display_until: created.display_until || undefined,
+    }), { status: 201 })
   }),
 
   http.patch('*/notifications/:notificationId/read', ({ params }) => {
     const notificationId = Number(params.notificationId)
-    const notification = mockNotifications.find((n) => n.id === notificationId)
+    const notification = mockDb.notification.update({
+      where: { id: { equals: notificationId } },
+      data: { is_read: true },
+    })
     if (!notification) {
       return HttpResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    notification.is_read = true
-    return HttpResponse.json(notification, { status: 200 })
+    return HttpResponse.json(mapMockNotification({
+      ...notification,
+      link: notification.link || undefined,
+      display_until: notification.display_until || undefined,
+    }), { status: 200 })
   }),
 ]

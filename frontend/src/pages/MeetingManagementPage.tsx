@@ -1,23 +1,27 @@
 import { useEffect, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Mic2 } from 'lucide-react'
 import PageHeader from '@/components/layout/PageHeader'
-import { useMeetingStore } from '@/stores/meetingStore'
+import {
+  createAddMeetingUploadsMutationOptions,
+  createMeetingUploadsQueryOptions,
+  createMeetingsQueryOptions,
+} from '@/features/meetings/api/queries'
+import { getErrorMessage } from '@/shared/api/client'
 
 export default function MeetingManagementPage() {
   const navigate = useNavigate()
-  const { meetings, uploadsByKey, fetchMeetings, fetchUploads, addUploads } = useMeetingStore()
-  const [uploads, setUploads] = useState<string[]>(uploadsByKey.general?.map((item) => item.filename) ?? [])
+  const meetingsQuery = useQuery(createMeetingsQueryOptions())
+  const uploadsQuery = useQuery(createMeetingUploadsQueryOptions(null))
+  const addUploadsMutation = useMutation(createAddMeetingUploadsMutationOptions(null))
+  const meetings = meetingsQuery.data ?? []
+  const [uploads, setUploads] = useState<string[]>([])
 
   useEffect(() => {
-    void fetchMeetings()
-    void fetchUploads(null)
-  }, [fetchMeetings, fetchUploads])
-
-  useEffect(() => {
-    setUploads(uploadsByKey.general?.map((item) => item.filename) ?? [])
-  }, [uploadsByKey.general])
+    setUploads((uploadsQuery.data ?? []).map((item) => item.filename))
+  }, [uploadsQuery.data])
 
   return (
     <div className="space-y-8">
@@ -45,13 +49,15 @@ export default function MeetingManagementPage() {
                 type="file"
                 accept="audio/*"
                 className="hidden"
-                onChange={(event) => {
+                onChange={async (event) => {
                   const files = Array.from(event.target.files ?? []).map((file) => file.name)
                   if (files.length > 0) {
-                    void addUploads(files, null)
-                  }
-                  if (files.length > 0) {
-                    toast.success(`${files.length} 件の音声を追加しました。`)
+                    try {
+                      await addUploadsMutation.mutateAsync({ files })
+                      toast.success(`${files.length} 件の音声を追加しました。`)
+                    } catch (error) {
+                      toast.error(getErrorMessage(error))
+                    }
                   }
                   event.currentTarget.value = ''
                 }}
@@ -65,7 +71,15 @@ export default function MeetingManagementPage() {
             )}
           </div>
         </div>
+        {(meetingsQuery.error || uploadsQuery.error) && (
+          <div className="px-6 py-4 text-sm text-destructive">
+            {getErrorMessage(meetingsQuery.error ?? uploadsQuery.error)}
+          </div>
+        )}
         <div className="divide-y">
+          {(meetingsQuery.isLoading || uploadsQuery.isLoading) && (
+            <div className="px-6 py-4 text-sm text-muted-foreground">読み込み中...</div>
+          )}
           {meetings.map((meeting) => (
             <button
               key={meeting.id}

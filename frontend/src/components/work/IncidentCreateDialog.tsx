@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { X, Plus, Tag } from 'lucide-react'
+import { createConfigCatalogQueryOptions } from '@/lib/api/queries/config'
+import { createUsersQueryOptions } from '@/lib/api/queries/incidents'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -17,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useIncidentStore } from '@/stores/incidentStore'
 
 interface IncidentCreateDialogProps {
   open: boolean
@@ -35,13 +37,14 @@ interface IncidentCreateDialogProps {
   }) => Promise<void>
 }
 
-const PREDEFINED_LABELS = [
-  { name: '緊急', color: 'bg-red-100 text-red-700 border-red-200' },
-  { name: '重要', color: 'bg-orange-100 text-orange-700 border-orange-200' },
-  { name: '安全', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  { name: '設備', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  { name: '手順', color: 'bg-green-100 text-green-700 border-green-200' },
-]
+const labelToneMap: Record<string, string> = {
+  '緊急': 'bg-red-100 text-red-700 border-red-200',
+  '重要': 'bg-orange-100 text-orange-700 border-orange-200',
+  '安全': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  '設備': 'bg-blue-100 text-blue-700 border-blue-200',
+  '手順': 'bg-green-100 text-green-700 border-green-200',
+  '教育': 'bg-violet-100 text-violet-700 border-violet-200',
+}
 
 export function IncidentCreateDialog({
   open,
@@ -57,14 +60,16 @@ export function IncidentCreateDialog({
   const [assigneeId, setAssigneeId] = useState<number | undefined>()
   const [selectedLabels, setSelectedLabels] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
-  
-  const { users, fetchUsers } = useIncidentStore()
-
-  useEffect(() => {
-    if (open) {
-      void fetchUsers()
-    }
-  }, [open, fetchUsers])
+  const usersQuery = useQuery({
+    ...createUsersQueryOptions(),
+    enabled: open,
+  })
+  const configCatalogQuery = useQuery({
+    ...createConfigCatalogQueryOptions(),
+    enabled: open,
+  })
+  const users = usersQuery.data ?? []
+  const availableLabels = configCatalogQuery.data?.incidentLabels ?? ['緊急', '重要', '安全', '設備', '手順']
 
   const handleAddAction = () => {
     setCorrectiveActions([...correctiveActions, ''])
@@ -193,18 +198,18 @@ export function IncidentCreateDialog({
               ラベル
             </Label>
             <div className="flex flex-wrap gap-2">
-              {PREDEFINED_LABELS.map((label) => (
+              {availableLabels.map((label) => (
                 <button
-                  key={label.name}
+                  key={label}
                   type="button"
-                  onClick={() => handleLabelToggle(label.name)}
+                  onClick={() => handleLabelToggle(label)}
                   className={`rounded-full border px-3 py-1 text-xs font-semibold transition-opacity ${
-                    selectedLabels.includes(label.name)
-                      ? label.color
+                    selectedLabels.includes(label)
+                      ? (labelToneMap[label] ?? 'bg-slate-100 text-slate-700 border-slate-200')
                       : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
-                  {label.name}
+                  {label}
                 </button>
               ))}
             </div>

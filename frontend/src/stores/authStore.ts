@@ -1,9 +1,9 @@
 import { create } from 'zustand'
 import type { User } from '@/types/api'
-import { fetchMe, loginRequest } from '@/lib/api/auth'
-import { getErrorMessage } from '@/lib/api/client'
-import { queryClient } from '@/lib/api/queryClient'
-import { queryKeys } from '@/lib/api/queryKeys'
+import { fetchMe, loginRequest } from '@/features/auth/api/service'
+import { getErrorMessage } from '@/shared/api/client'
+import { queryClient } from '@/shared/api/queryClient'
+import { queryKeys } from '@/shared/api/queryKeys'
 
 const STORAGE_KEY = 'rky_check_access_token'
 const STORAGE_TYPE_KEY = 'rky_check_token_type'

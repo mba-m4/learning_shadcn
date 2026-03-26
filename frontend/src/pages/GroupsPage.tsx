@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,23 +20,23 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import PageHeader from '@/components/layout/PageHeader'
-import { createGroup } from '@/lib/api/works'
-import { useWorkStore } from '@/stores/workStore'
-import { useIncidentStore } from '@/stores/incidentStore'
+import { createUsersQueryOptions } from '@/features/incidents/api/queries'
+import { createWorkGroupMutationOptions, createWorkGroupsQueryOptions } from '@/features/works/api/queries'
+import { getErrorMessage } from '@/shared/api/client'
 
 export default function GroupsPage() {
-  const { groups, fetchGroups, loadingGroups, error } = useWorkStore()
-  const { users, fetchUsers } = useIncidentStore()
+  const groupsQuery = useQuery(createWorkGroupsQueryOptions())
+  const usersQuery = useQuery(createUsersQueryOptions())
+  const createGroupMutation = useMutation(createWorkGroupMutationOptions())
+  const groups = groupsQuery.data ?? []
+  const users = usersQuery.data ?? []
   const [name, setName] = useState('')
   const [memberGroups, setMemberGroups] = useState<Record<number, number[]>>({})
   const [groupMemberSelections, setGroupMemberSelections] = useState<Record<number, number | ''>>({})
   const [memberGroupSelections, setMemberGroupSelections] = useState<Record<number, number | ''>>({})
   const groupCount = groups.length
-
-  useEffect(() => {
-    void fetchGroups()
-    void fetchUsers()
-  }, [fetchGroups, fetchUsers])
+  const error = groupsQuery.error ?? usersQuery.error
+  const loadingGroups = groupsQuery.isLoading || groupsQuery.isFetching
 
   useEffect(() => {
     setMemberGroups((prev) => {
@@ -73,12 +74,11 @@ export default function GroupsPage() {
       return
     }
     try {
-      await createGroup(name.trim())
+      await createGroupMutation.mutateAsync({ name: name.trim() })
       toast.success('作業グループを作成しました。')
       setName('')
-      await fetchGroups()
     } catch (error) {
-      toast.error('作業グループの作成に失敗しました。')
+      toast.error(getErrorMessage(error))
     }
   }
 
@@ -153,7 +153,14 @@ export default function GroupsPage() {
         title="作業グループ管理"
         subtitle="作業グループを作成・確認します。"
         actions={
-          <Button variant="outline" size="sm" onClick={() => fetchGroups()}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void groupsQuery.refetch()
+              void usersQuery.refetch()
+            }}
+          >
             再読み込み
           </Button>
         }
@@ -201,7 +208,7 @@ export default function GroupsPage() {
           </div>
         </div>
         <div className="px-6 py-4">
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-sm text-destructive">{getErrorMessage(error)}</p>}
           {loadingGroups ? (
             <p className="text-sm text-muted-foreground">読み込み中...</p>
           ) : groupCount === 0 ? (

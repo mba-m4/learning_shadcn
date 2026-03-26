@@ -1,26 +1,31 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { ClipboardList, Search } from 'lucide-react'
 import PageHeader from '@/components/layout/PageHeader'
 import { Input } from '@/components/ui/input'
-import { useWorkStore } from '@/stores/workStore'
-import { useSafetyStore } from '@/stores/safetyStore'
+import { createWorkAcknowledgmentQueryOptions } from '@/lib/api/queries/safety'
+import { createWorkDailyOverviewQueryOptions } from '@/lib/api/queries/works'
 
 export default function UnsignedWorksPage() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
-  const { date, dailyOverview, fetchDailyOverview } = useWorkStore()
-  const { acknowledgments, fetchAcknowledgment } = useSafetyStore()
-
-  useEffect(() => {
-    void fetchDailyOverview(date)
-  }, [date, fetchDailyOverview])
-
-  useEffect(() => {
-    dailyOverview.forEach((overview) => {
-      void fetchAcknowledgment(overview.work.id)
-    })
-  }, [dailyOverview, fetchAcknowledgment])
+  const date = new Date().toISOString().slice(0, 10)
+  const dailyOverviewQuery = useQuery(createWorkDailyOverviewQueryOptions(date))
+  const dailyOverview = dailyOverviewQuery.data ?? []
+  const acknowledgmentQueries = useQueries({
+    queries: dailyOverview.map((overview) => ({
+      ...createWorkAcknowledgmentQueryOptions(overview.work.id),
+      retry: false,
+    })),
+  })
+  const acknowledgments = useMemo(
+    () => dailyOverview.reduce<Record<number, boolean>>((accumulator, overview, index) => {
+      accumulator[overview.work.id] = Boolean(acknowledgmentQueries[index]?.data)
+      return accumulator
+    }, {}),
+    [acknowledgmentQueries, dailyOverview],
+  )
 
   const unsignedWorks = useMemo(() => {
     return dailyOverview.filter((overview) => !acknowledgments[overview.work.id])
@@ -41,6 +46,11 @@ export default function UnsignedWorksPage() {
         title="Unsigned Works"
         subtitle="署名が必要な作業を一覧表示します。"
       />
+      {dailyOverviewQuery.error && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          作業一覧の取得に失敗しました。
+        </div>
+      )}
       
       <div className="rounded-xl border border-border/60 bg-white p-6">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">

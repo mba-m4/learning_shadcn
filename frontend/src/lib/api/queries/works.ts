@@ -1,5 +1,6 @@
 import {
   keepPreviousData,
+  mutationOptions,
   queryOptions,
   type UseQueryOptions,
 } from '@tanstack/react-query'
@@ -11,6 +12,7 @@ import type {
 } from '@/types/api'
 import { queryKeys } from '../queryKeys'
 import {
+  createGroup,
   fetchDailyOverview,
   fetchGroups,
   fetchWorkDateSummary,
@@ -31,6 +33,15 @@ export const createWorkGroupsQueryOptions = <
     ...queryConfig,
     queryKey: queryKeys.works.groups(),
     queryFn: fetchGroups,
+  })
+
+export const createWorkGroupMutationOptions = () =>
+  mutationOptions({
+    mutationFn: ({ name }: { name: string }) => createGroup(name),
+    onSuccess: async () => {
+      const { queryClient } = await import('../queryClient')
+      await queryClient.invalidateQueries({ queryKey: queryKeys.works.groups() })
+    },
   })
 
 export type WorkListParams = Parameters<typeof fetchWorkList>[0]

@@ -1,9 +1,14 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Bell, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import PageHeader from '@/components/layout/PageHeader'
-import { useNotificationStore } from '@/stores/notificationStore'
+import { getErrorMessage } from '@/lib/api/client'
+import {
+  createMarkNotificationAsReadMutationOptions,
+  createNotificationDetailQueryOptions,
+} from '@/lib/api/queries/support'
 
 const typeLabel: Record<'info' | 'warning' | 'urgent' | 'success', string> = {
   info: '情報',
@@ -23,29 +28,56 @@ export default function NotificationDetailPage() {
   const { notificationId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
-  const { notifications, fetchNotifications, markAsRead } = useNotificationStore()
   const notificationIdNumber = Number(notificationId)
   const backTo = (location.state as { from?: string } | null)?.from ?? '/notifications'
 
-  useEffect(() => {
-    if (Number.isNaN(notificationIdNumber)) {
-      return
-    }
-    if (notifications.length === 0) {
-      void fetchNotifications()
-    }
-  }, [fetchNotifications, notificationIdNumber, notifications.length])
-
-  const notification = useMemo(
-    () => notifications.find((item) => item.id === notificationIdNumber),
-    [notificationIdNumber, notifications]
+  const notificationQuery = useQuery({
+    ...createNotificationDetailQueryOptions(notificationIdNumber),
+    enabled: Number.isFinite(notificationIdNumber),
+  })
+  const markAsReadMutation = useMutation(
+    createMarkNotificationAsReadMutationOptions({ limit: 100 }),
   )
+  const notification = notificationQuery.data
 
   useEffect(() => {
     if (notification && !notification.is_read) {
-      void markAsRead(notification.id)
+      void markAsReadMutation.mutateAsync({ notificationId: notification.id })
     }
-  }, [markAsRead, notification])
+  }, [markAsReadMutation, notification])
+
+  if (Number.isNaN(notificationIdNumber)) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="お知らせ詳細" subtitle="" />
+        <p className="text-sm text-muted-foreground">お知らせIDが不正です。</p>
+        <Button variant="outline" onClick={() => navigate(backTo)}>
+          一覧へ戻る
+        </Button>
+      </div>
+    )
+  }
+
+  if (notificationQuery.isLoading) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="お知らせ詳細" subtitle="" />
+        <p className="text-sm text-muted-foreground">読み込み中...</p>
+      </div>
+    )
+  }
+
+  if (notificationQuery.error) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="お知らせ詳細" subtitle="" />
+        <p className="text-sm text-destructive">{getErrorMessage(notificationQuery.error)}</p>
+        <Button variant="outline" onClick={() => navigate(backTo)}>
+          一覧へ戻る
+        </Button>
+      </div>
+    )
+  }
 
   if (!notification) {
     return (

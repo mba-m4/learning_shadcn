@@ -24,6 +24,45 @@ The dependency direction is one-way:
 - `store`: Zustand stores for auth, filters, dialogs, drafts, optimistic UI hints.
 - `view`: pages and components.
 
+## Directory Layout
+
+Use directories to express meaning, not implementation trivia.
+
+`src/app`
+
+- App bootstrap, router, providers.
+
+`src/features/<domain>`
+
+- Domain-facing entry points for pages, components, API query factories, and feature-local helpers.
+- Example: `features/meetings/components`, `features/works/api`, `features/incidents/api`.
+
+`src/shared/api`
+
+- Cross-domain API infrastructure only.
+- `client`, `queryClient`, `queryKeys` live here because they are transport/cache primitives shared by every feature.
+
+`src/types/api`
+
+- Split API-facing types by domain instead of keeping one monolithic file.
+- Keep `src/types/api.ts` only as a compatibility barrel while imports migrate.
+
+`src/components`
+
+- Truly shared UI or cross-feature composition.
+- If a component exists for one feature only, move it under `src/features/<domain>/components`.
+
+`src/stores`
+
+- UI/auth/draft state only.
+- Do not place server lists, server detail payloads, or request loading flags here.
+
+## Import Rules
+
+- Views should prefer `features/<domain>/api/*` over importing raw files from `lib/api`.
+- Views and stores should prefer `shared/api/*` for shared API infrastructure.
+- Treat `lib/api` as implementation detail during the migration; do not add new page-level imports to it.
+
 ## What Stays in Zustand
 
 - Access token and current user session state.

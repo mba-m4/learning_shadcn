@@ -1,49 +1,49 @@
-import { useEffect, useMemo } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IncidentTimeline } from '@/components/incident/IncidentTimeline'
 import { IncidentSidebar } from '@/components/incident/IncidentSidebar'
-import { useIncidentStore } from '@/stores/incidentStore'
+import { getErrorMessage } from '@/lib/api/client'
+import {
+  createIncidentActivitiesQueryOptions,
+  createIncidentAddLabelMutationOptions,
+  createIncidentAssignmentMutationOptions,
+  createIncidentCommentMutationOptions,
+  createIncidentCommentsQueryOptions,
+  createIncidentDetailQueryOptions,
+  createIncidentRemoveLabelMutationOptions,
+  createIncidentStatusMutationOptions,
+  createUsersQueryOptions,
+} from '@/lib/api/queries/incidents'
 
 export default function IncidentDetailPage() {
   const { incidentId } = useParams()
   const incidentIdNumber = Number(incidentId)
   const navigate = useNavigate()
-  const {
-    incidents,
-    comments,
-    activities,
-    users,
-    fetchIncident,
-    updateStatus,
-    fetchComments,
-    fetchActivities,
-    fetchUsers,
-    addComment,
-    updateAssignment,
-    addLabel,
-    removeLabel,
-  } = useIncidentStore()
-  
-  const incident = useMemo(
-    () => incidents.find((item) => item.id === incidentIdNumber),
-    [incidentIdNumber, incidents],
-  )
-
-  const incidentComments = comments[incidentIdNumber] || []
-  const incidentActivities = activities[incidentIdNumber] || []
-
-  useEffect(() => {
-    if (Number.isNaN(incidentIdNumber)) {
-      return
-    }
-    void fetchIncident(incidentIdNumber)
-    void fetchComments(incidentIdNumber)
-    void fetchActivities(incidentIdNumber)
-    void fetchUsers()
-  }, [fetchIncident, fetchComments, fetchActivities, fetchUsers, incidentIdNumber])
+  const incidentQuery = useQuery({
+    ...createIncidentDetailQueryOptions(incidentIdNumber),
+    enabled: Number.isFinite(incidentIdNumber),
+  })
+  const commentsQuery = useQuery({
+    ...createIncidentCommentsQueryOptions(incidentIdNumber),
+    enabled: Number.isFinite(incidentIdNumber),
+  })
+  const activitiesQuery = useQuery({
+    ...createIncidentActivitiesQueryOptions(incidentIdNumber),
+    enabled: Number.isFinite(incidentIdNumber),
+  })
+  const usersQuery = useQuery(createUsersQueryOptions())
+  const statusMutation = useMutation(createIncidentStatusMutationOptions(incidentIdNumber))
+  const commentMutation = useMutation(createIncidentCommentMutationOptions(incidentIdNumber))
+  const assignmentMutation = useMutation(createIncidentAssignmentMutationOptions(incidentIdNumber))
+  const addLabelMutation = useMutation(createIncidentAddLabelMutationOptions(incidentIdNumber))
+  const removeLabelMutation = useMutation(createIncidentRemoveLabelMutationOptions(incidentIdNumber))
+  const incident = incidentQuery.data
+  const incidentComments = commentsQuery.data ?? []
+  const incidentActivities = activitiesQuery.data ?? []
+  const users = usersQuery.data ?? []
 
   const getLabelColor = (label: string) => {
     const labelColors: Record<string, string> = {
@@ -58,50 +58,69 @@ export default function IncidentDetailPage() {
   }
 
   const handleAddComment = async (content: string) => {
-    const result = await addComment(incidentIdNumber, content)
-    if (result) {
+    try {
+      await commentMutation.mutateAsync({ content })
       toast.success('コメントを追加しました')
-    } else {
-      toast.error('コメントの追加に失敗しました')
+    } catch (error) {
+      toast.error(getErrorMessage(error))
     }
   }
 
   const handleAssigneeChange = async (userId: number | null) => {
-    const result = await updateAssignment(incidentIdNumber, userId)
-    if (result) {
+    try {
+      await assignmentMutation.mutateAsync({ assigneeId: userId })
       toast.success('担当者を更新しました')
-    } else {
-      toast.error('担当者の更新に失敗しました')
+    } catch (error) {
+      toast.error(getErrorMessage(error))
     }
   }
 
   const handleLabelAdd = async (label: string) => {
-    const result = await addLabel(incidentIdNumber, label)
-    if (result) {
+    try {
+      await addLabelMutation.mutateAsync({ label })
       toast.success(`ラベル "${label}" を追加しました`)
-    } else {
-      toast.error('ラベルの追加に失敗しました')
+    } catch (error) {
+      toast.error(getErrorMessage(error))
     }
   }
 
   const handleLabelRemove = async (label: string) => {
-    const result = await removeLabel(incidentIdNumber, label)
-    if (result) {
+    try {
+      await removeLabelMutation.mutateAsync({ label })
       toast.success(`ラベル "${label}" を削除しました`)
-    } else {
-      toast.error('ラベルの削除に失敗しました')
+    } catch (error) {
+      toast.error(getErrorMessage(error))
     }
   }
 
   const handleStatusToggle = async () => {
     if (!incident) return
     const newStatus = incident.status === 'open' ? 'resolved' : 'open'
-    const result = await updateStatus(incident.id, newStatus)
-    if (result) {
+    try {
+      await statusMutation.mutateAsync({ status: newStatus })
       toast.success(`ステータスを ${newStatus === 'resolved' ? '解決済' : '対応中'} に更新しました`)
-    } else {
-      toast.error('ステータスの更新に失敗しました')
+    } catch (error) {
+      toast.error(getErrorMessage(error))
     }
+  }
+
+  if (Number.isNaN(incidentIdNumber)) {
+    return <p className="text-sm text-muted-foreground">インシデントIDが不正です。</p>
+  }
+
+  if (incidentQuery.isLoading) {
+    return <p className="text-sm text-muted-foreground">読み込み中...</p>
+  }
+
+  if (incidentQuery.error) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-destructive">{getErrorMessage(incidentQuery.error)}</p>
+        <Button variant="outline" onClick={() => navigate('/incidents')}>
+          一覧へ戻る
+        </Button>
+      </div>
+    )
   }
 
   if (!incident) {
@@ -227,6 +246,11 @@ export default function IncidentDetailPage() {
             <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-muted-foreground mb-4">
               アクティビティ
             </h2>
+            {(commentsQuery.error || activitiesQuery.error) && (
+              <p className="mb-4 text-sm text-destructive">
+                {getErrorMessage(commentsQuery.error ?? activitiesQuery.error)}
+              </p>
+            )}
             <IncidentTimeline
               activities={incidentActivities}
               comments={incidentComments}

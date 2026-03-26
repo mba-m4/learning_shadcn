@@ -1,25 +1,51 @@
-import { useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import PageHeader from '@/components/layout/PageHeader'
-import { useManualStore } from '@/stores/manualStore'
+import { getErrorMessage } from '@/lib/api/client'
+import { createManualDetailQueryOptions } from '@/lib/api/queries/support'
 
 export default function ManualDetailPage() {
   const { manualId } = useParams()
   const manualIdNumber = Number(manualId)
   const navigate = useNavigate()
-  const { manuals, fetchManual } = useManualStore()
-  const manual = useMemo(
-    () => manuals.find((item) => item.id === manualIdNumber),
-    [manualIdNumber, manuals],
-  )
+  const manualQuery = useQuery({
+    ...createManualDetailQueryOptions(manualIdNumber),
+    enabled: Number.isFinite(manualIdNumber),
+  })
+  const manual = manualQuery.data
 
-  useEffect(() => {
-    if (Number.isNaN(manualIdNumber)) {
-      return
-    }
-    void fetchManual(manualIdNumber)
-  }, [fetchManual, manualIdNumber])
+  if (Number.isNaN(manualIdNumber)) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">手順書IDが不正です。</p>
+        <Button variant="outline" onClick={() => navigate('/manuals')}>
+          一覧へ戻る
+        </Button>
+      </div>
+    )
+  }
+
+  if (manualQuery.isLoading) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Manual Detail" subtitle="手順書の詳細を確認します。" />
+        <p className="text-sm text-muted-foreground">読み込み中...</p>
+      </div>
+    )
+  }
+
+  if (manualQuery.error) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Manual Detail" subtitle="手順書の詳細を確認します。" />
+        <p className="text-sm text-destructive">{getErrorMessage(manualQuery.error)}</p>
+        <Button variant="outline" onClick={() => navigate('/manuals')}>
+          一覧へ戻る
+        </Button>
+      </div>
+    )
+  }
 
   if (!manual) {
     return (

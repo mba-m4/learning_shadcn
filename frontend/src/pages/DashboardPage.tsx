@@ -1,43 +1,50 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { ClipboardList, ShieldAlert, Users, AlertTriangle, Info, CheckCircle, ChevronRight, TrendingUp, BarChart3, Sparkles, Zap, Target } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts'
 import PageHeader from '@/components/layout/PageHeader'
-import { useWorkStore } from '@/stores/workStore'
-import { useSafetyStore } from '@/stores/safetyStore'
-import { useIncidentStore } from '@/stores/incidentStore'
-import { useNotificationStore } from '@/stores/notificationStore'
-import { useRiskRegistryStore } from '@/stores/riskRegistryStore'
+import { createIncidentsQueryOptions } from '@/features/incidents/api/queries'
+import { createNotificationsQueryOptions } from '@/features/notifications/api/queries'
+import { createRiskRecordsQueryOptions } from '@/features/risk-registry/api/queries'
+import {
+  createWorkAcknowledgmentQueryOptions,
+  createWorkDailyOverviewQueryOptions,
+} from '@/features/works/api/queries'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { Button as BitButton } from '@/components/ui/8bit/button'
 
 export default function DashboardPage() {
-  const { date, dailyOverview, fetchDailyOverview } = useWorkStore()
-  const { acknowledgments, fetchAcknowledgment } = useSafetyStore()
-  const { incidents, fetchIncidents } = useIncidentStore()
-  const { notifications, fetchNotifications } = useNotificationStore()
-  const { risks, fetchRisks } = useRiskRegistryStore()
   const navigate = useNavigate()
+  const date = new Date().toISOString().slice(0, 10)
+  const dailyOverviewQuery = useQuery(createWorkDailyOverviewQueryOptions(date))
+  const incidentsQuery = useQuery(createIncidentsQueryOptions())
+  const notificationsQuery = useQuery(createNotificationsQueryOptions({ limit: 20 }))
+  const risksQuery = useQuery(createRiskRecordsQueryOptions())
+  const dailyOverview = dailyOverviewQuery.data ?? []
+  const incidents = incidentsQuery.data ?? []
+  const notifications = notificationsQuery.data ?? []
+  const risks = risksQuery.data ?? []
+  const acknowledgmentQueries = useQueries({
+    queries: dailyOverview.map((overview) => ({
+      ...createWorkAcknowledgmentQueryOptions(overview.work.id),
+      retry: false,
+    })),
+  })
+  const acknowledgments = useMemo(
+    () => dailyOverview.reduce<Record<number, boolean>>((accumulator, overview, index) => {
+      accumulator[overview.work.id] = Boolean(acknowledgmentQueries[index]?.data)
+      return accumulator
+    }, {}),
+    [acknowledgmentQueries, dailyOverview],
+  )
 
   const chartConfig = {
     count: {
-      label: 'リスク数',
+      label: '件数',
       color: 'hsl(var(--chart-1))',
     },
   } satisfies ChartConfig
-
-  useEffect(() => {
-    void fetchDailyOverview(date)
-    void fetchIncidents()
-    void fetchNotifications()
-    void fetchRisks()
-  }, [date, fetchDailyOverview, fetchIncidents, fetchNotifications, fetchRisks])
-
-  useEffect(() => {
-    dailyOverview.forEach((overview) => {
-      void fetchAcknowledgment(overview.work.id)
-    })
-  }, [dailyOverview, fetchAcknowledgment])
 
   const todayWorks = useMemo(() => dailyOverview.slice(0, 5), [dailyOverview])
   const recentIncidents = useMemo(() => incidents.slice(0, 5), [incidents])
@@ -46,15 +53,19 @@ export default function DashboardPage() {
   }, [dailyOverview, acknowledgments])
 
   const riskTrendData = useMemo(() => {
-    const dates: string[] = []
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      dates.push(d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }))
-    }
-    const mockCounts = [3, 5, 4, 7, 6, 8, 4]
-    return dates.map((date, idx) => ({ date, count: mockCounts[idx] }))
-  }, [])
+    const counts = risks.reduce<Record<'high' | 'medium' | 'low', number>>(
+      (accumulator, risk) => {
+        accumulator[risk.severity] += 1
+        return accumulator
+      },
+      { high: 0, medium: 0, low: 0 },
+    )
+    return [
+      { date: 'High', count: counts.high },
+      { date: 'Medium', count: counts.medium },
+      { date: 'Low', count: counts.low },
+    ]
+  }, [risks])
 
   const activeNotifications = useMemo(() => {
     const now = new Date()
@@ -71,6 +82,11 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen gradient-mesh">
       <div className="space-y-8 pb-12">
+        {(dailyOverviewQuery.error || incidentsQuery.error || notificationsQuery.error || risksQuery.error) && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            データ取得に一部失敗しました。
+          </div>
+        )}
         <div className="sticky top-0 z-10 -mx-6 -mt-6 bg-background/80 px-6 pt-6 backdrop-blur-xl">
           <PageHeader
             title="Dashboard"
@@ -149,8 +165,8 @@ export default function DashboardPage() {
                 </div>
                 <Target className="h-5 w-5 text-emerald-500/40 transition-all duration-300 group-hover:text-emerald-500" />
               </div>
-              <p className="text-4xl font-bold tracking-tight text-gradient">12</p>
-              <p className="mt-2 text-sm font-medium text-muted-foreground">アクティブメンバー</p>
+              <p className="text-4xl font-bold tracking-tight text-gradient">{risks.length}</p>
+              <p className="mt-2 text-sm font-medium text-muted-foreground">登録済みリスク</p>
             </div>
           </div>
         </div>
@@ -218,8 +234,8 @@ export default function DashboardPage() {
               <TrendingUp className="h-5 w-5 text-chart-1" />
             </div>
             <div>
-              <h3 className="text-lg font-bold">7日間のリスク推移</h3>
-              <p className="text-xs text-muted-foreground">過去1週間のトレンド分析</p>
+              <h3 className="text-lg font-bold">リスク優先度分布</h3>
+              <p className="text-xs text-muted-foreground">台帳に登録されたリスクの severity 集計</p>
             </div>
           </div>
           <ChartContainer config={chartConfig} className="h-64 w-full">

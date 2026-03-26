@@ -2,6 +2,10 @@ import { setupWorker } from 'msw/browser'
 import { handlers } from './handlers'
 import { seedMockDb } from './db'
 
-seedMockDb()
+try {
+	seedMockDb()
+} catch (error) {
+	console.error('Failed to seed mock DB:', error)
+}
 
 export const worker = setupWorker(...handlers)

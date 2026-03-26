@@ -1,5 +1,11 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useSafetyStore } from '@/stores/safetyStore'
+import { getErrorMessage } from '@/lib/api/client'
+import {
+  createSubmitAcknowledgmentMutationOptions,
+  createWorkAcknowledgmentHistoryQueryOptions,
+} from '@/lib/api/queries/safety'
 import {
   Dialog,
   DialogContent,
@@ -42,9 +48,16 @@ export function RiskAcknowledgmentDialog({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSignatureConfirmed, setIsSignatureConfirmed] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
-  const [history, setHistory] = useState<WorkRiskAcknowledgment[]>([])
   const [selectedHistoryId, setSelectedHistoryId] = useState<number | null>(null)
   const [canvasNonce, setCanvasNonce] = useState(0)
+  const historyQuery = useQuery({
+    ...createWorkAcknowledgmentHistoryQueryOptions(work.work.id),
+    enabled: open && isViewMode,
+  })
+  const submitAcknowledgmentMutation = useMutation(
+    createSubmitAcknowledgmentMutationOptions(work.work.id),
+  )
+  const history = historyQuery.data ?? []
 
   const {
     acknowledgeRisk,
@@ -52,8 +65,6 @@ export function RiskAcknowledgmentDialog({
     acknowledgedRisks,
     signatureData,
     setSignature,
-    submitAcknowledgment,
-    fetchAcknowledgmentHistory,
     error,
     resetForm,
   } = useSafetyStore()
@@ -167,20 +178,9 @@ export function RiskAcknowledgmentDialog({
     if (!open || !isViewMode) {
       return
     }
-    setHistoryLoading(true)
-    fetchAcknowledgmentHistory(work.work.id)
-      .then((entries) => {
-        setHistory(entries)
-        setSelectedHistoryId(entries[0]?.id ?? null)
-      })
-      .catch(() => {
-        setHistory([])
-        setSelectedHistoryId(null)
-      })
-      .finally(() => {
-        setHistoryLoading(false)
-      })
-  }, [open, isViewMode, work.work.id, fetchAcknowledgmentHistory])
+    setHistoryLoading(historyQuery.isLoading)
+    setSelectedHistoryId((currentId) => currentId ?? history[0]?.id ?? null)
+  }, [open, isViewMode, history, historyQuery.isLoading])
 
   const handleClearSignature = () => {
     const canvas = canvasRef.current
@@ -351,7 +351,11 @@ export function RiskAcknowledgmentDialog({
           action: risk.action,
           item_name: risk.itemName,
         }))
-      await submitAcknowledgment(work.work.id, selectedRisks)
+      await submitAcknowledgmentMutation.mutateAsync({
+        signature_base64: signatureData,
+        acknowledged_risk_ids: selectedRisks.map((risk) => risk.id),
+        acknowledged_risks: selectedRisks,
+      })
       resetForm()
       onOpenChange(false)
       onComplete()
@@ -400,6 +404,8 @@ export function RiskAcknowledgmentDialog({
                 <p className="text-xs text-muted-foreground">確認履歴</p>
                 {historyLoading ? (
                   <p className="text-sm text-muted-foreground">読み込み中...</p>
+                ) : historyQuery.error ? (
+                  <p className="text-sm text-destructive">{getErrorMessage(historyQuery.error)}</p>
                 ) : history.length === 0 ? (
                   <p className="text-sm text-muted-foreground">履歴がありません。</p>
                 ) : (
@@ -582,9 +588,9 @@ export function RiskAcknowledgmentDialog({
               </div>
 
               {/* エラーメッセージ */}
-              {error && (
+              {(error || submitAcknowledgmentMutation.error) && (
                 <div className="bg-red-50 border border-red-200 p-3 rounded-lg text-sm text-red-700">
-                  {error}
+                  {error ?? getErrorMessage(submitAcknowledgmentMutation.error)}
                 </div>
               )}
             </>
@@ -604,16 +610,16 @@ export function RiskAcknowledgmentDialog({
                   resetForm()
                   onOpenChange(false)
                 }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || submitAcknowledgmentMutation.isPending}
               >
                 キャンセル
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={!allAcknowledged || !signatureData || isSubmitting}
+                disabled={!allAcknowledged || !signatureData || isSubmitting || submitAcknowledgmentMutation.isPending}
                 className="min-w-32"
               >
-                {isSubmitting ? '処理中...' : '✓ 確認完了、作業開始'}
+                {isSubmitting || submitAcknowledgmentMutation.isPending ? '処理中...' : '✓ 確認完了、作業開始'}
               </Button>
             </>
           )}

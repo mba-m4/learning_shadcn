@@ -1,16 +1,17 @@
 import type { RiskRecord } from '@/types/api'
 import { request } from './client'
+import { riskRecordSchema, riskRecordsSchema } from './schemas/support'
 
-export const fetchRisks = () => request<RiskRecord[]>('/risks')
+export const fetchRisks = () => request<RiskRecord[]>('/risks', undefined, true, riskRecordsSchema)
 
 export const fetchRisk = (riskId: number) =>
-  request<RiskRecord>(`/risks/${riskId}`)
+  request<RiskRecord>(`/risks/${riskId}`, undefined, true, riskRecordSchema)
 
 export const updateRiskStatus = (riskId: number, status: RiskRecord['status']) =>
   request<RiskRecord>(`/risks/${riskId}/status`, {
     method: 'PATCH',
-    body: JSON.stringify({ status }),
-  })
+    body: { status },
+  }, true, riskRecordSchema)
 
 export const updateRiskSeverity = (
   riskId: number,
@@ -18,11 +19,11 @@ export const updateRiskSeverity = (
 ) =>
   request<RiskRecord>(`/risks/${riskId}/severity`, {
     method: 'PATCH',
-    body: JSON.stringify({ severity }),
-  })
+    body: { severity },
+  }, true, riskRecordSchema)
 
 export const addRiskAction = (riskId: number, action: string) =>
   request<RiskRecord>(`/risks/${riskId}/actions`, {
     method: 'POST',
-    body: JSON.stringify({ action }),
-  })
+    body: { action },
+  }, true, riskRecordSchema)
