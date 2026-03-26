@@ -239,6 +239,23 @@ export const createManualRiskMutationOptions = (itemId: number, workId?: number)
 		},
 	})
 
+export const createManualRiskForItemMutationOptions = (workId: number) =>
+	mutationOptions({
+		mutationFn: ({
+			itemId,
+			content,
+			action,
+		}: {
+			itemId: number
+			content: string
+			action?: string | null
+		}) => createManualRisk(itemId, content, action),
+		onSuccess: async (_data, variables) => {
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.manualRisks(variables.itemId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
+		},
+	})
+
 export const createUpdateManualRiskMutationOptions = (itemId: number, workId?: number) =>
 	mutationOptions({
 		mutationFn: ({ riskId, payload }: { riskId: number; payload: { content?: string | null; action?: string | null } }) =>
@@ -248,6 +265,22 @@ export const createUpdateManualRiskMutationOptions = (itemId: number, workId?: n
 			if (workId) {
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.riskSummary(workId) })
 			}
+		},
+	})
+
+export const createUpdateManualRiskForItemMutationOptions = (workId: number) =>
+	mutationOptions({
+		mutationFn: ({
+			riskId,
+			payload,
+		}: {
+			itemId: number
+			riskId: number
+			payload: { content?: string | null; action?: string | null }
+		}) => updateManualRisk(riskId, payload),
+		onSuccess: async (_data, variables) => {
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.manualRisks(variables.itemId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
 		},
 	})
 
@@ -262,6 +295,15 @@ export const createDeleteManualRiskMutationOptions = (itemId: number, workId?: n
 		},
 	})
 
+export const createDeleteManualRiskForItemMutationOptions = (workId: number) =>
+	mutationOptions({
+		mutationFn: ({ riskId }: { itemId: number; riskId: number }) => deleteManualRisk(riskId),
+		onSuccess: async (_data, variables) => {
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.manualRisks(variables.itemId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
+		},
+	})
+
 export const createGenerateRiskMutationOptions = (itemId: number, workId?: number) =>
 	mutationOptions({
 		mutationFn: () => generateRisk(itemId),
@@ -270,6 +312,15 @@ export const createGenerateRiskMutationOptions = (itemId: number, workId?: numbe
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.detail(workId) })
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
 			}
+		},
+	})
+
+export const createGenerateRiskForItemMutationOptions = (workId: number) =>
+	mutationOptions({
+		mutationFn: ({ itemId }: { itemId: number }) => generateRisk(itemId),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.detail(workId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
 		},
 	})
 

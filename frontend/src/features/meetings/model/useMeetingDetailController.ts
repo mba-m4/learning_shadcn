@@ -9,6 +9,7 @@ import {
   createMeetingUploadsQueryOptions,
   createUpdateMeetingSyncStateMutationOptions,
 } from '@/features/meetings/api/queries'
+import { createMeetingInsightsViewModel } from '@/features/meetings/model/meetingInsights'
 import type { TranscriptSegment } from '@/features/meetings/components/MeetingTranscriptSection'
 import { createWorkListQueryOptions } from '@/features/works/api/queries'
 
@@ -106,6 +107,10 @@ export function useMeetingDetailController(meetingIdNumber: number) {
   const uploads = uploadsQuery.data ?? []
   const workList = workListQuery.data?.items ?? []
   const syncState = meeting?.sync_state ?? '待機中'
+  const insights = useMemo(
+    () => (meeting ? createMeetingInsightsViewModel(meeting) : null),
+    [meeting],
+  )
 
   const filteredTranscripts = useMemo(() => {
     return DEFAULT_TRANSCRIPTS.filter((segment) => {
@@ -240,6 +245,7 @@ export function useMeetingDetailController(meetingIdNumber: number) {
     isLoading,
     isPlaying,
     isRefreshing: updateSyncMutation.isPending,
+    insights,
     materialLink,
     materialLinks,
     meeting,

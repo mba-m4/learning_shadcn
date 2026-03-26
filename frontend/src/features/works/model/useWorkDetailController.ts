@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react'
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/shared/api/client'
-import { queryKeys } from '@/shared/api/queryKeys'
 import {
   createIncidentMutationOptions,
   createIncidentsQueryOptions,
@@ -10,19 +9,17 @@ import {
 import { createManualsQueryOptions } from '@/features/manuals/api/queries'
 import {
   createAddWorkCommentMutationOptions,
+  createDeleteManualRiskForItemMutationOptions,
+  createGenerateRiskForItemMutationOptions,
   createManualRisksQueryOptions,
+  createManualRiskForItemMutationOptions,
   createWorkAcknowledgmentQueryOptions,
   createWorkCommentsQueryOptions,
   createWorkDetailQueryOptions,
   createDeleteAiRiskMutationOptions,
+  createUpdateManualRiskForItemMutationOptions,
   createUpdateAiRiskMutationOptions,
 } from '@/features/works/api/queries'
-import {
-  createManualRisk,
-  deleteManualRisk,
-  generateRisk,
-  updateManualRisk,
-} from '@/features/works/api/service'
 import { useAuthStore } from '@/stores/authStore'
 import type {
   Comment,
@@ -51,7 +48,6 @@ export interface WorkIncidentDraft {
 }
 
 export function useWorkDetailController(workIdNumber: number) {
-  const queryClient = useQueryClient()
   const { currentUser, loginId } = useAuthStore()
   const [showAcknowledgmentDialog, setShowAcknowledgmentDialog] = useState(false)
   const [showIncidentDialog, setShowIncidentDialog] = useState(false)
@@ -119,27 +115,18 @@ export function useWorkDetailController(workIdNumber: number) {
     createAddWorkCommentMutationOptions(workIdNumber),
   )
   const createIncidentMutation = useMutation(createIncidentMutationOptions())
-  const addManualRiskMutation = useMutation({
-    mutationFn: ({
-      itemId,
-      content,
-      action,
-    }: {
-      itemId: number
-      content: string
-      action?: string | null
-    }) => createManualRisk(itemId, content, action),
-    onSuccess: async (_data, variables) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.works.manualRisks(variables.itemId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.works.acknowledgment(workIdNumber),
-        }),
-      ])
-    },
-  })
+  const addManualRiskMutation = useMutation(
+    createManualRiskForItemMutationOptions(workIdNumber),
+  )
+  const updateManualRiskMutation = useMutation(
+    createUpdateManualRiskForItemMutationOptions(workIdNumber),
+  )
+  const deleteManualRiskMutation = useMutation(
+    createDeleteManualRiskForItemMutationOptions(workIdNumber),
+  )
+  const generateRiskMutation = useMutation(
+    createGenerateRiskForItemMutationOptions(workIdNumber),
+  )
   const updateAiRiskMutation = useMutation(
     createUpdateAiRiskMutationOptions(workIdNumber),
   )
@@ -194,15 +181,7 @@ export function useWorkDetailController(workIdNumber: number) {
 
   const handleGenerateRisk = async (itemId: number) => {
     try {
-      await generateRisk(itemId)
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.works.detail(workIdNumber),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.works.acknowledgment(workIdNumber),
-        }),
-      ])
+      await generateRiskMutation.mutateAsync({ itemId })
       toast.success('リスクを生成しました。')
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -239,15 +218,7 @@ export function useWorkDetailController(workIdNumber: number) {
     payload: { content?: string | null; action?: string | null },
   ) => {
     try {
-      await updateManualRisk(riskId, payload)
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.works.manualRisks(itemId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.works.acknowledgment(workIdNumber),
-        }),
-      ])
+      await updateManualRiskMutation.mutateAsync({ itemId, riskId, payload })
       toast.success('リスクを更新しました。')
       return true
     } catch (error) {
@@ -258,15 +229,7 @@ export function useWorkDetailController(workIdNumber: number) {
 
   const handleDeleteManualRisk = async (itemId: number, riskId: number) => {
     try {
-      await deleteManualRisk(riskId)
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.works.manualRisks(itemId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.works.acknowledgment(workIdNumber),
-        }),
-      ])
+      await deleteManualRiskMutation.mutateAsync({ itemId, riskId })
       toast.success('リスクを削除しました。')
       return true
     } catch (error) {

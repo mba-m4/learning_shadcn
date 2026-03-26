@@ -35,6 +35,7 @@ export default function MeetingDetailPage() {
     isLoading,
     isPlaying,
     isRefreshing,
+    insights,
     materialLink,
     materialLinks,
     meeting,
@@ -138,6 +139,7 @@ export default function MeetingDetailPage() {
 
           <MeetingInsightsSection
             extractedRisks={meeting.extracted_risks}
+            insights={insights ?? { summary: '', decisions: [], actionItems: [] }}
             onAddRisk={() => toast.success('リスク台帳に追加しました。')}
           />
         </div>

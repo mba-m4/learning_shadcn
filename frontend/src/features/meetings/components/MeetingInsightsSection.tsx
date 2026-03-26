@@ -1,12 +1,14 @@
 import { Button } from '@/components/ui/button'
 import type { Meeting } from '@/types/api'
+import type { MeetingInsightsViewModel } from '@/features/meetings/model/meetingInsights'
 
 interface Props {
   extractedRisks: Meeting['extracted_risks']
+  insights: MeetingInsightsViewModel
   onAddRisk(): void
 }
 
-export function MeetingInsightsSection({ extractedRisks, onAddRisk }: Props) {
+export function MeetingInsightsSection({ extractedRisks, insights, onAddRisk }: Props) {
   return (
     <>
       <section className="rounded-xl border border-border/60 bg-white p-6">
@@ -23,26 +25,26 @@ export function MeetingInsightsSection({ extractedRisks, onAddRisk }: Props) {
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold">要約</p>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              高温配管エリアの劣化指摘により立入制限の強化を決定。清掃頻度見直しと保全計画の提出を優先。
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{insights.summary}</p>
           </div>
           <div className="rounded-lg border border-border/60 p-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold">決定事項</p>
             </div>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-              <li>高温配管エリアは補修完了まで立入制限</li>
-              <li>掲示物を増やし周知を徹底</li>
+              {insights.decisions.map((decision) => (
+                <li key={decision}>{decision}</li>
+              ))}
             </ul>
           </div>
           <div className="rounded-lg border border-border/60 p-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold">ToDo</p>
+              <p className="text-sm font-semibold">対応項目</p>
             </div>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-              <li>保全チームが来週までに対策計画提出</li>
-              <li>清掃頻度の見直しを提案</li>
+              {insights.actionItems.map((actionItem) => (
+                <li key={actionItem}>{actionItem}</li>
+              ))}
             </ul>
           </div>
         </div>
