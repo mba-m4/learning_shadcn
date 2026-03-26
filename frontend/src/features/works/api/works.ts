@@ -6,6 +6,7 @@ import type {
   WorkItem,
   WorkListResponse,
   WorkOverview,
+  WorkSceneAsset,
   WorkStatus,
 } from '@/types/api'
 import { request } from '@/shared/api/client'
@@ -21,6 +22,7 @@ import {
   workListResponseSchema,
   workOverviewListSchema,
   workOverviewSchema,
+  workSceneAssetSchema,
   workSchema,
 } from '@/shared/api/schemas/works'
 
@@ -95,6 +97,9 @@ export const generateRisk = (workItemId: number) =>
 
 export const fetchWorkDetail = (workId: number) =>
   request<WorkOverview>(`/works/${workId}`, undefined, true, workOverviewSchema)
+
+export const fetchWorkScene = (workId: number) =>
+  request<WorkSceneAsset>(`/works/${workId}/scene`, undefined, true, workSceneAssetSchema)
 
 export const fetchWorkList = (params: {
   start_date?: string

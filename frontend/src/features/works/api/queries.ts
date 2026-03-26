@@ -12,6 +12,7 @@ import type {
 	WorkGroup,
 	WorkListResponse,
 	WorkOverview,
+	WorkSceneAsset,
 	WorkRiskAcknowledgment,
 } from '@/types/api'
 import { queryClient } from '@/shared/api/queryClient'
@@ -34,6 +35,7 @@ import {
 	fetchWorkDateSummary,
 	fetchWorkDetail,
 	fetchWorkList,
+	fetchWorkScene,
 	generateRisk,
 	submitAcknowledgment,
 	type SubmitAcknowledgmentPayload,
@@ -174,6 +176,21 @@ export const createWorkDetailQueryOptions = <
 		queryFn: () => fetchWorkDetail(workId),
 	})
 
+export type WorkSceneQueryOptions<TData = WorkSceneAsset, TError = Error> = Omit<
+	UseQueryOptions<WorkSceneAsset, TError, TData>,
+	'queryKey' | 'queryFn'
+>
+
+export const createWorkSceneQueryOptions = <TData = WorkSceneAsset, TError = Error>(
+	workId: number,
+	queryConfig?: WorkSceneQueryOptions<TData, TError>,
+) =>
+	queryOptions({
+		...queryConfig,
+		queryKey: queryKeys.works.scene(workId),
+		queryFn: () => fetchWorkScene(workId),
+	})
+
 export type WorkCommentsQueryOptions<TData = Comment[], TError = Error> = Omit<
 	UseQueryOptions<Comment[], TError, TData>,
 	'queryKey' | 'queryFn'
@@ -253,6 +270,7 @@ export const createManualRiskForItemMutationOptions = (workId: number) =>
 		onSuccess: async (_data, variables) => {
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.manualRisks(variables.itemId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
 		},
 	})
 
@@ -281,6 +299,7 @@ export const createUpdateManualRiskForItemMutationOptions = (workId: number) =>
 		onSuccess: async (_data, variables) => {
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.manualRisks(variables.itemId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
 		},
 	})
 
@@ -301,6 +320,7 @@ export const createDeleteManualRiskForItemMutationOptions = (workId: number) =>
 		onSuccess: async (_data, variables) => {
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.manualRisks(variables.itemId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
 		},
 	})
 
@@ -321,6 +341,7 @@ export const createGenerateRiskForItemMutationOptions = (workId: number) =>
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.detail(workId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
 		},
 	})
 
@@ -332,6 +353,7 @@ export const createUpdateAiRiskMutationOptions = (workId?: number) =>
 			if (workId) {
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.detail(workId) })
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
+				await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
 			}
 		},
 	})
@@ -343,6 +365,7 @@ export const createDeleteAiRiskMutationOptions = (workId?: number) =>
 			if (workId) {
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.detail(workId) })
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
+				await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
 			}
 		},
 	})

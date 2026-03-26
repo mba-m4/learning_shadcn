@@ -91,6 +91,47 @@ export interface WorkDateSummary {
   count: number
 }
 
+export interface WorkSceneVector3 {
+  x: number
+  y: number
+  z: number
+}
+
+export interface WorkSceneCamera {
+  position: WorkSceneVector3
+  target: WorkSceneVector3
+  fov?: number
+}
+
+export interface WorkSceneTransform {
+  scale: number
+  offset?: WorkSceneVector3 | null
+}
+
+export interface WorkSceneAnnotation {
+  id: string
+  item_id?: number
+  risk_id?: number
+  kind: 'work' | 'risk'
+  title: string
+  description: string
+  position: WorkSceneVector3 | null
+  size?: number
+  severity?: RiskLevel | null
+  source?: RiskSource | null
+  steps?: string[]
+}
+
+export interface WorkSceneAsset {
+  work_id: number
+  model_name: string
+  model_url: string
+  coordinate_system: 'model-origin'
+  camera?: WorkSceneCamera | null
+  transform?: WorkSceneTransform | null
+  annotations: WorkSceneAnnotation[]
+}
+
 export interface WorkRiskAcknowledgment {
   id: number
   work_id: number

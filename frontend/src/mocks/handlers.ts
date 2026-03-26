@@ -21,8 +21,11 @@ import type {
   MyWork,
   WorkAsset,
   Notification,
+  WorkSceneAsset,
+  WorkSceneAnnotation,
 } from '@/types/api'
 import { mockConfigCatalog, mockDb, mockDbReaders } from './db'
+import sceneModelUrl from '@/assets/glbfile/Hitem3d-1774536756152.glb?url'
 
 const mapMockUser = (user: {
   id: number
@@ -515,6 +518,128 @@ const mockWorkAssets: Record<number, WorkAsset> = {
   },
 }
 
+const mockSceneItemPositions: Record<number, { x: number; y: number; z: number; size?: number }> = {
+  1: { x: 0, y: -0.15, z: 0.2, size: 0.06 },
+  2: { x: 0.25, y: 0.2, z: -0.15, size: 0.06 },
+}
+
+const mockSceneManualRiskPositions: Record<number, { x: number; y: number; z: number; size?: number }> = {
+  1: { x: 0.25, y: -0.05, z: 0.2, size: 0.06 },
+}
+
+const mockSceneAiRiskPositions: Record<number, { x: number; y: number; z: number; size?: number }> = {
+  101: { x: -0.2, y: 0, z: 0, size: 0.06 },
+}
+
+const resolveSceneItemPosition = (itemId: number) => {
+  return mockSceneItemPositions[itemId] ?? null
+}
+
+const resolveSceneManualRiskPosition = (riskId: number) => {
+  return mockSceneManualRiskPositions[riskId] ?? null
+}
+
+const resolveSceneAiRiskPosition = (riskId: number) => {
+  return mockSceneAiRiskPositions[riskId] ?? null
+}
+
+const buildWorkScene = (workId: number): WorkSceneAsset | null => {
+  const overview = mockDbReaders.getWorkOverview(workId)
+  if (!overview) {
+    return null
+  }
+
+  const annotations: WorkSceneAnnotation[] = overview.items.flatMap((entry) => {
+    const itemPosition = resolveSceneItemPosition(entry.item.id)
+    const manualRisks = mockDbReaders.listManualRisks(entry.item.id)
+    const workAnnotation: WorkSceneAnnotation = {
+      id: `work-item-${entry.item.id}`,
+      item_id: entry.item.id,
+      kind: 'work',
+      title: entry.item.name,
+      description: entry.item.description,
+      position: itemPosition
+        ? {
+            x: itemPosition.x,
+            y: itemPosition.y,
+            z: itemPosition.z,
+          }
+        : null,
+      size: itemPosition?.size ?? 0.06,
+      steps: [
+        `${entry.item.name} の対象設備に移動する`,
+        `${entry.item.name} を実施し、値や状態を確認する`,
+        '結果を記録し、異常があれば関係者に共有する',
+      ],
+    }
+
+    const manualRiskAnnotations = manualRisks.map((risk) => {
+      const riskPosition = itemPosition ? resolveSceneManualRiskPosition(risk.id) : null
+
+      return {
+        id: `manual-risk-${risk.id}`,
+        item_id: entry.item.id,
+        risk_id: risk.id,
+        kind: 'risk' as const,
+        title: risk.content,
+        description: risk.action ?? `${entry.item.name} に紐づく手入力リスク`,
+        position: riskPosition
+          ? {
+              x: riskPosition.x,
+              y: riskPosition.y,
+              z: riskPosition.z,
+            }
+          : null,
+        size: riskPosition?.size ?? 0.08,
+        severity: 'high' as const,
+        source: 'manual' as const,
+      }
+    })
+
+    const aiRiskAnnotations = entry.risks.map((risk) => {
+      const riskPosition = itemPosition ? resolveSceneAiRiskPosition(risk.id) : null
+
+      return {
+        id: `ai-risk-${risk.id}`,
+        item_id: entry.item.id,
+        risk_id: risk.id,
+        kind: 'risk' as const,
+        title: risk.content,
+        description: risk.action ?? `${entry.item.name} に紐づく AI リスク`,
+        position: riskPosition
+          ? {
+              x: riskPosition.x,
+              y: riskPosition.y,
+              z: riskPosition.z,
+            }
+          : null,
+        size: riskPosition?.size ?? 0.08,
+        severity: 'high' as const,
+        source: 'ai' as const,
+      }
+    })
+
+    return [workAnnotation, ...manualRiskAnnotations, ...aiRiskAnnotations]
+  })
+
+  return {
+    work_id: workId,
+    model_name: '現場設備 3D モデル',
+    model_url: sceneModelUrl,
+    coordinate_system: 'model-origin',
+    transform: {
+      scale: 2,
+      offset: { x: 0, y: 0, z: 0 },
+    },
+    camera: {
+      position: { x: 3.2, y: 2.5, z: 4.4 },
+      target: { x: 0, y: 0.45, z: 0 },
+      fov: 30,
+    },
+    annotations,
+  }
+}
+
 const mockWorkDateSummary = mockWorks.map((work) => ({
   work_date: work.work_date,
   count: 1,
@@ -659,6 +784,17 @@ export const handlers = [
     }
 
     return HttpResponse.json(workOverview, { status: 200 })
+  }),
+
+  http.get('*/works/:workId/scene', ({ params }) => {
+    const workId = Number(params.workId)
+    const scene = buildWorkScene(workId)
+
+    if (!scene) {
+      return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    return HttpResponse.json(scene, { status: 200 })
   }),
 
   http.post('*/works', async ({ request }) => {

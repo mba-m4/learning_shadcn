@@ -16,6 +16,7 @@ import {
   createWorkAcknowledgmentQueryOptions,
   createWorkCommentsQueryOptions,
   createWorkDetailQueryOptions,
+  createWorkSceneQueryOptions,
   createDeleteAiRiskMutationOptions,
   createUpdateManualRiskForItemMutationOptions,
   createUpdateAiRiskMutationOptions,
@@ -76,6 +77,10 @@ export function useWorkDetailController(workIdNumber: number) {
   })
   const commentsQuery = useQuery({
     ...createWorkCommentsQueryOptions(workIdNumber),
+    enabled: Number.isFinite(workIdNumber),
+  })
+  const workSceneQuery = useQuery({
+    ...createWorkSceneQueryOptions(workIdNumber),
     enabled: Number.isFinite(workIdNumber),
   })
   const acknowledgmentQuery = useQuery({
@@ -292,5 +297,7 @@ export function useWorkDetailController(workIdNumber: number) {
     showAcknowledgmentDialog,
     showIncidentDialog,
     workDetailQuery,
+    workScene: workSceneQuery.data ?? null,
+    workSceneQuery,
   }
 }

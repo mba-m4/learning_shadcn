@@ -6,6 +6,7 @@ import WorkAcknowledgmentSection from '@/features/works/ui/WorkAcknowledgmentSec
 import WorkDetailCommentsSection from '@/features/works/ui/WorkDetailCommentsSection'
 import WorkDetailHeaderSection from '@/features/works/ui/WorkDetailHeaderSection'
 import WorkDetailIncidentsSection from '@/features/works/ui/WorkDetailIncidentsSection'
+import { WorkSceneSection } from '@/features/works/ui/WorkSceneSection'
 import WorkDetailSummarySection from '@/features/works/ui/WorkDetailSummarySection'
 import { RiskAcknowledgmentDialog } from '@/features/works/ui/RiskAcknowledgmentDialog'
 import RiskActionSection from '@/features/works/ui/RiskActionSection'
@@ -53,6 +54,15 @@ export default function WorkDetailPage() {
         detail={controller.detail}
         onBack={() => navigate(-1)}
         onOpenExplorer={() => navigate('/works/explorer')}
+      />
+
+      <WorkSceneSection
+        error={controller.workSceneQuery.error}
+        isLoading={controller.workSceneQuery.isLoading}
+        sceneAsset={controller.workScene}
+        onRefetch={() => {
+          void controller.workSceneQuery.refetch()
+        }}
       />
 
       <WorkDetailSummarySection

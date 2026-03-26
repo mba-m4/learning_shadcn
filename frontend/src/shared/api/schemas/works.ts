@@ -53,6 +53,47 @@ export const workDateSummarySchema = z.object({
   count: z.number().int(),
 })
 
+export const workSceneVector3Schema = z.object({
+  x: z.number(),
+  y: z.number(),
+  z: z.number(),
+})
+
+export const workSceneCameraSchema = z.object({
+  position: workSceneVector3Schema,
+  target: workSceneVector3Schema,
+  fov: z.number().optional(),
+})
+
+export const workSceneTransformSchema = z.object({
+  scale: z.number(),
+  offset: workSceneVector3Schema.nullable().optional(),
+})
+
+export const workSceneAnnotationSchema = z.object({
+  id: z.string(),
+  item_id: z.number().int().optional(),
+  risk_id: z.number().int().optional(),
+  kind: z.enum(['work', 'risk']),
+  title: z.string(),
+  description: z.string(),
+  position: workSceneVector3Schema.nullable(),
+  size: z.number().optional(),
+  severity: riskLevelSchema.nullable().optional(),
+  source: z.enum(['ai', 'manual']).nullable().optional(),
+  steps: z.array(z.string()).optional(),
+})
+
+export const workSceneAssetSchema = z.object({
+  work_id: z.number().int(),
+  model_name: z.string(),
+  model_url: z.string(),
+  coordinate_system: z.literal('model-origin'),
+  camera: workSceneCameraSchema.nullable().optional(),
+  transform: workSceneTransformSchema.nullable().optional(),
+  annotations: z.array(workSceneAnnotationSchema),
+})
+
 export const createWorkPayloadSchema = z.object({
   title: z.string().min(1),
   description: z.string(),
