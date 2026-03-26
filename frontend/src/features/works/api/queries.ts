@@ -18,8 +18,10 @@ import { queryClient } from '@/shared/api/queryClient'
 import { queryKeys } from '@/shared/api/queryKeys'
 import {
 	addComment,
+	addWorkItem,
 	createGroup,
 	createManualRisk,
+	createWork,
 	deleteManualRisk,
 	deleteRiskAssessment,
 	fetchAcknowledgment,
@@ -59,6 +61,41 @@ export const createWorkGroupMutationOptions = () =>
 		mutationFn: ({ name }: { name: string }) => createGroup(name),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.groups() })
+		},
+	})
+
+export const createWorkMutationOptions = () =>
+	mutationOptions({
+		mutationFn: ({
+			title,
+			description,
+			group_id,
+			work_date,
+			status,
+			items,
+		}: {
+			title: string
+			description: string
+			group_id: number
+			work_date: string
+			status: 'draft' | 'confirmed'
+			items: Array<{ name: string; description: string }>
+		}) =>
+			createWork({
+				title,
+				description,
+				group_id,
+				work_date,
+				status,
+			}).then(async (work) => {
+				if (items.length > 0) {
+					await Promise.all(items.map((item) => addWorkItem(work.id, item)))
+				}
+
+				return work
+			}),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.all() })
 		},
 	})
 

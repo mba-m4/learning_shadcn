@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -15,9 +15,10 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import PageHeader from '@/components/layout/PageHeader'
 import { getErrorMessage } from '@/shared/api/client'
-import { queryKeys } from '@/shared/api/queryKeys'
-import { createWorkGroupsQueryOptions } from '@/features/works/api/queries'
-import { addWorkItem, createWork } from '@/features/works/api/service'
+import {
+  createWorkGroupsQueryOptions,
+  createWorkMutationOptions,
+} from '@/features/works/api/queries'
 
 interface WorkDraft {
   title: string
@@ -41,17 +42,11 @@ const createDefaultDraft = (): WorkDraft => ({
 
 export default function WorkCreatePage() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const [draft, setDraft] = useState<WorkDraft>(createDefaultDraft)
   const [itemName, setItemName] = useState('')
   const [itemDescription, setItemDescription] = useState('')
   const groupsQuery = useQuery(createWorkGroupsQueryOptions())
-  const createWorkMutation = useMutation({
-    mutationFn: createWork,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.works.all() })
-    },
-  })
+  const createWorkMutation = useMutation(createWorkMutationOptions())
 
   const groups = groupsQuery.data ?? []
 
@@ -106,13 +101,8 @@ export default function WorkCreatePage() {
         group_id: draft.group_id,
         work_date: draft.work_date,
         status: draft.status,
+        items: draft.items,
       })
-
-      if (draft.items.length > 0) {
-        await Promise.all(
-          draft.items.map((item) => addWorkItem(createdWork.id, item)),
-        )
-      }
 
       toast.success('作業を作成しました。')
       resetDraft()
