@@ -11,7 +11,7 @@ interface SafetyState {
   resetForm(): void
 }
 
-export const useSafetyStore = create<SafetyState>((set, get) => ({
+export const useSafetyStore = create<SafetyState>((set) => ({
   signatureData: null,
   acknowledgedRisks: new Set(),
   error: null,

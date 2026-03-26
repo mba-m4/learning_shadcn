@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { RiskRecord } from '@/types/api'
-import { addRiskAction, fetchRisk, fetchRisks, updateRiskSeverity, updateRiskStatus } from '@/lib/api/riskRegistry'
-import { getErrorMessage } from '@/lib/api/client'
+import { addRiskAction, fetchRisk, fetchRisks, updateRiskSeverity, updateRiskStatus } from '@/features/risk-registry/api/service'
+import { getErrorMessage } from '@/shared/api/client'
 
 interface RiskRegistryState {
   risks: RiskRecord[]

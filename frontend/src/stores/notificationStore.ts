@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { Notification } from '@/types/api'
-import { createNotification, fetchNotifications, markNotificationAsRead } from '@/lib/api/notifications'
-import { getErrorMessage } from '@/lib/api/client'
+import { createNotification, fetchNotifications, markNotificationAsRead } from '@/features/notifications/api/service'
+import { getErrorMessage } from '@/shared/api/client'
 
 interface NotificationState {
   notifications: Notification[]

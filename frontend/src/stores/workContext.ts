@@ -18,17 +18,17 @@ import {
   fetchWorkDetail,
   createWork,
   generateRisk,
-} from '@/lib/api/works'
+} from '@/features/works/api/service'
 import {
   fetchManualRisks,
   createManualRisk,
   fetchRiskSummary,
-} from '@/lib/api/risks'
+} from '@/features/works/api/service'
 import {
   fetchComments,
   addComment as apiAddComment,
-} from '@/lib/api/comments'
-import { getErrorMessage } from '@/lib/api/client'
+} from '@/features/works/api/service'
+import { getErrorMessage } from '@/shared/api/client'
 
 interface WorkDraft {
   title: string
