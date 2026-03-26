@@ -22,7 +22,7 @@ export function DocumentCreatePage() {
   }
 
   return (
-    <main className="px-4 py-10">
+    <div className="py-2">
       <DocumentForm
         cancelTo="/documents"
         description="新しいドキュメントを追加して、一覧と詳細の再取得フローを確認できます。"
@@ -32,6 +32,6 @@ export function DocumentCreatePage() {
         submitLabel="作成する"
         title="Document Create"
       />
-    </main>
+    </div>
   )
 }

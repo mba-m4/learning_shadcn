@@ -46,7 +46,7 @@ export function DocumentEditPage() {
   }
 
   return (
-    <main className="px-4 py-10">
+    <div className="py-2">
       <DocumentForm
         cancelTo={`/documents/${id}`}
         description="既存ドキュメントを編集して、詳細キャッシュと一覧の再取得を確認できます。"
@@ -57,6 +57,6 @@ export function DocumentEditPage() {
         submitLabel="更新する"
         title="Document Edit"
       />
-    </main>
+    </div>
   )
 }

@@ -47,7 +47,7 @@ export function DocumentsPage() {
   if (!Array.isArray(documents)) return null
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-4 py-10">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="space-y-2">
           <p className="text-sm tracking-[0.2em] text-muted-foreground uppercase">
@@ -193,6 +193,6 @@ export function DocumentsPage() {
           </CardContent>
         </Card>
       ) : null}
-    </main>
+    </div>
   )
 }

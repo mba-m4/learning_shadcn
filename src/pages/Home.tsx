@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 
 export function Home() {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-10">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <section className="space-y-3">
         <p className="text-sm tracking-[0.2em] text-muted-foreground uppercase">
           React Query + MSW + Router + Zustand
@@ -63,6 +63,6 @@ export function Home() {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </div>
   )
 }
