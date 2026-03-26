@@ -1,0 +1,37 @@
+.DS_Store
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+build/
+dist/
+wheels/
+*.egg-info
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Node
+node_modules/
+dist/
+.vite/
+.pnpm-store/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
