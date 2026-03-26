@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { AlertTriangle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -20,6 +20,12 @@ import {
   createUsersQueryOptions,
 } from '@/features/incidents/api/queries'
 import { getErrorMessage } from '@/shared/api/client'
+import type { Incident } from '@/types/api'
+
+interface IncidentManagementView {
+  availableLabels: string[]
+  filteredIncidents: Incident[]
+}
 
 export default function IncidentManagementPage() {
   const navigate = useNavigate()
@@ -32,66 +38,67 @@ export default function IncidentManagementPage() {
   const [labelFilter, setLabelFilter] = useState('all')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
 
-  const incidentsQuery = useQuery(createIncidentsQueryOptions())
+  const selectIncidentManagementView = useCallback(
+    (incidents: Incident[]): IncidentManagementView => {
+      const labels = new Set<string>()
+      incidents.forEach((incident) => {
+        incident.labels?.forEach((label) => labels.add(label))
+      })
+
+      const filteredIncidents = incidents.filter((incident) => {
+        const matchesStatus =
+          statusFilter === 'all' ? true : incident.status === statusFilter
+        const matchesType = typeFilter === 'all' ? true : incident.type === typeFilter
+        const matchesQuery =
+          query.trim().length === 0
+            ? true
+            : [incident.title, incident.root_cause, incident.work_title]
+                .filter(Boolean)
+                .some((value) =>
+                  value!.toLowerCase().includes(query.trim().toLowerCase()),
+                )
+        const matchesFrom = fromDate ? incident.date >= fromDate : true
+        const matchesTo = toDate ? incident.date <= toDate : true
+        const matchesAssignee =
+          assigneeFilter === 'all'
+            ? true
+            : assigneeFilter === 'unassigned'
+              ? !incident.assignee_id
+              : incident.assignee_id === Number(assigneeFilter)
+        const matchesLabel =
+          labelFilter === 'all' ? true : incident.labels?.includes(labelFilter)
+
+        return (
+          matchesStatus &&
+          matchesType &&
+          matchesQuery &&
+          matchesFrom &&
+          matchesTo &&
+          matchesAssignee &&
+          matchesLabel
+        )
+      })
+
+      return {
+        availableLabels: Array.from(labels),
+        filteredIncidents,
+      }
+    },
+    [assigneeFilter, fromDate, labelFilter, query, statusFilter, toDate, typeFilter],
+  )
+
+  const incidentsQuery = useQuery(
+    createIncidentsQueryOptions({
+      select: selectIncidentManagementView,
+    }),
+  )
   const usersQuery = useQuery(createUsersQueryOptions())
   const createIncidentMutation = useMutation(createIncidentMutationOptions())
 
-  const incidents = incidentsQuery.data ?? []
+  const filteredIncidents = incidentsQuery.data?.filteredIncidents ?? []
+  const availableLabels = incidentsQuery.data?.availableLabels ?? []
   const users = usersQuery.data ?? []
   const error = incidentsQuery.error ?? usersQuery.error
-
-  const availableLabels = useMemo(() => {
-    const labels = new Set<string>()
-    incidents.forEach((incident) => {
-      incident.labels?.forEach((label) => labels.add(label))
-    })
-    return Array.from(labels)
-  }, [incidents])
-
-  const filteredIncidents = useMemo(() => {
-    return incidents.filter((incident) => {
-      const matchesStatus =
-        statusFilter === 'all' ? true : incident.status === statusFilter
-      const matchesType = typeFilter === 'all' ? true : incident.type === typeFilter
-      const matchesQuery =
-        query.trim().length === 0
-          ? true
-          : [incident.title, incident.root_cause, incident.work_title]
-              .filter(Boolean)
-              .some((value) =>
-                value!.toLowerCase().includes(query.trim().toLowerCase()),
-              )
-      const matchesFrom = fromDate ? incident.date >= fromDate : true
-      const matchesTo = toDate ? incident.date <= toDate : true
-      const matchesAssignee =
-        assigneeFilter === 'all'
-          ? true
-          : assigneeFilter === 'unassigned'
-            ? !incident.assignee_id
-            : incident.assignee_id === Number(assigneeFilter)
-      const matchesLabel =
-        labelFilter === 'all' ? true : incident.labels?.includes(labelFilter)
-
-      return (
-        matchesStatus &&
-        matchesType &&
-        matchesQuery &&
-        matchesFrom &&
-        matchesTo &&
-        matchesAssignee &&
-        matchesLabel
-      )
-    })
-  }, [
-    incidents,
-    statusFilter,
-    typeFilter,
-    query,
-    fromDate,
-    toDate,
-    assigneeFilter,
-    labelFilter,
-  ])
 
   const handleCreateIncident = async (data: {
     title: string
@@ -99,6 +106,8 @@ export default function IncidentManagementPage() {
     root_cause: string
     corrective_actions: string[]
     work_id?: number
+    assignee_id?: number
+    labels: string[]
   }) => {
     try {
       await createIncidentMutation.mutateAsync({

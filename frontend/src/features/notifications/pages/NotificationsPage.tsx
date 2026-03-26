@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -48,6 +48,17 @@ const isNotificationType = (
   value: string,
 ): value is ConfigCatalog['notificationTypes'][number] => value in typeLabel
 
+const selectSortedNotifications = <T extends {
+  created_at: string
+  pinned?: boolean
+}>(notifications: T[]) => {
+  return [...notifications].sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1
+    if (!a.pinned && b.pinned) return 1
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
+}
+
 export default function NotificationsPage() {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
@@ -58,23 +69,29 @@ export default function NotificationsPage() {
   const [noExpiry, setNoExpiry] = useState(false)
   const [pinned, setPinned] = useState(false)
 
-  const notificationsQuery = useQuery(createNotificationsQueryOptions({ limit: 100 }))
-  const configCatalogQuery = useQuery(createConfigCatalogQueryOptions())
+  const selectNotificationTypes = useCallback(
+    (catalog: ConfigCatalog) =>
+      catalog.notificationTypes.filter(isNotificationType),
+    [],
+  )
+
+  const notificationsQuery = useQuery(
+    createNotificationsQueryOptions({ limit: 100 }, {
+      select: selectSortedNotifications,
+    }),
+  )
+  const configCatalogQuery = useQuery(
+    createConfigCatalogQueryOptions({
+      select: selectNotificationTypes,
+    }),
+  )
   const createNotificationMutation = useMutation(
     createCreateNotificationMutationOptions({ limit: 100 }),
   )
   const notifications = notificationsQuery.data ?? []
   const notificationTypes =
-    configCatalogQuery.data?.notificationTypes.filter(isNotificationType) ??
+    configCatalogQuery.data ??
     (Object.keys(typeLabel) as Array<keyof typeof typeLabel>)
-
-  const sortedNotifications = useMemo(() => {
-    return [...notifications].sort((a, b) => {
-      if (a.pinned && !b.pinned) return -1
-      if (!a.pinned && b.pinned) return 1
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    })
-  }, [notifications])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -258,7 +275,7 @@ export default function NotificationsPage() {
           )}
           {notificationsQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">読み込み中...</p>
-          ) : sortedNotifications.length === 0 ? (
+          ) : notifications.length === 0 ? (
             <p className="text-sm text-muted-foreground">お知らせはまだ登録されていません。</p>
           ) : (
             <Table>
@@ -274,7 +291,7 @@ export default function NotificationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedNotifications.map((notification) => (
+                {notifications.map((notification) => (
                   <TableRow key={notification.id}>
                     <TableCell>
                       <button

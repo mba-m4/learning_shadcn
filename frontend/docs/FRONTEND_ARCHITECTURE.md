@@ -59,9 +59,9 @@ Use directories to express meaning, not implementation trivia.
 
 ## Import Rules
 
-- Views should prefer `features/<domain>/api/*` over importing raw files from `lib/api`.
-- Views and stores should prefer `shared/api/*` for shared API infrastructure.
-- Treat `lib/api` as implementation detail during the migration; do not add new page-level imports to it.
+- Views should import domain endpoints from `features/<domain>/api/*`.
+- Views and stores should use `shared/api/*` only for cross-feature transport/cache infrastructure.
+- Do not introduce a generic `lib/api` layer again; shared code belongs in `shared`, domain code belongs in `features`.
 
 ## Placement Rules
 
@@ -71,7 +71,7 @@ The table below defines what each top-level area is for.
 | --- | --- | --- | --- |
 | `src/app` | app bootstrap, providers, router, route wiring | domain business logic, feature-only UI, raw endpoint functions | `App.tsx`, route definitions |
 | `src/shared/api` | cross-feature API infrastructure | feature-specific services or schemas | `client.ts`, `queryClient.ts`, `queryKeys.ts` |
-| `src/shared/lib` | framework-agnostic helper functions | React components, server state caches, feature business logic | formatters, pure helpers |
+| `src/shared` | framework-agnostic helpers, auth guards, shared hooks, primitive types | feature business logic, page orchestration, domain endpoints | `utils.ts`, `auth/guards.tsx`, `hooks/useAuth.ts` |
 | `src/shared/types` | minimal cross-domain primitive types | work-only or incident-only contracts | common primitives |
 | `src/components/ui` | shadcn/ui primitives and generic design-system UI | business-aware feature components | `Button`, `Dialog`, `Input`, `Table` |
 | `src/components/layout` | app-wide layout and shell components | feature-only sections | `AppShell`, `PageHeader` |
@@ -152,7 +152,7 @@ Use reuse scope to decide where code belongs.
 10. Large pages must be decomposed.
 	If a page exceeds roughly 400 lines or mixes multiple sections and forms, split it into feature components and helper hooks.
 11. Prefer feature entry points over implementation-detail imports.
-	New page-level imports should come from `features/<domain>/api/*` or `shared/api/*`, not directly from `lib/api/*`.
+	New page-level imports should come from `features/<domain>/api/*` or `shared/api/*`.
 12. Compatibility barrels are temporary.
 	Re-export files are allowed during migration, but new code should import from the target structure.
 13. Separate API contracts from UI display models when necessary.
@@ -164,7 +164,7 @@ Use reuse scope to decide where code belongs.
 
 Avoid introducing these patterns in new code.
 
-1. Adding new feature-specific endpoints under `src/lib/api/*`.
+1. Reintroducing a catch-all `src/lib` directory for mixed shared and feature code.
 2. Growing a single `types/api.ts` file with every domain contract.
 3. Storing API responses and request loading flags inside Zustand.
 4. Putting page-only components under `src/components`.

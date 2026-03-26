@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { ClipboardList, Search } from 'lucide-react'
@@ -8,12 +8,32 @@ import {
   createWorkAcknowledgmentQueryOptions,
   createWorkDailyOverviewQueryOptions,
 } from '@/features/works/api/queries'
+import type { WorkOverview } from '@/types/api'
 
 export default function UnsignedWorksPage() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const date = new Date().toISOString().slice(0, 10)
-  const dailyOverviewQuery = useQuery(createWorkDailyOverviewQueryOptions(date))
+  const selectFilteredOverview = useCallback(
+    (dailyOverview: WorkOverview[]) => {
+      if (!query.trim()) {
+        return dailyOverview
+      }
+
+      const normalizedQuery = query.toLowerCase()
+      return dailyOverview.filter(
+        (overview) =>
+          overview.work.title.toLowerCase().includes(normalizedQuery) ||
+          overview.work.description.toLowerCase().includes(normalizedQuery),
+      )
+    },
+    [query],
+  )
+  const dailyOverviewQuery = useQuery(
+    createWorkDailyOverviewQueryOptions(date, {
+      select: selectFilteredOverview,
+    }),
+  )
   const dailyOverview = dailyOverviewQuery.data ?? []
   const acknowledgmentQueries = useQueries({
     queries: dailyOverview.map((overview) => ({
@@ -21,26 +41,12 @@ export default function UnsignedWorksPage() {
       retry: false,
     })),
   })
-  const acknowledgments = useMemo(
-    () => dailyOverview.reduce<Record<number, boolean>>((accumulator, overview, index) => {
-      accumulator[overview.work.id] = Boolean(acknowledgmentQueries[index]?.data)
-      return accumulator
-    }, {}),
-    [acknowledgmentQueries, dailyOverview],
-  )
+  const acknowledgments = dailyOverview.reduce<Record<number, boolean>>((accumulator, overview, index) => {
+    accumulator[overview.work.id] = Boolean(acknowledgmentQueries[index]?.data)
+    return accumulator
+  }, {})
 
-  const unsignedWorks = useMemo(() => {
-    return dailyOverview.filter((overview) => !acknowledgments[overview.work.id])
-  }, [dailyOverview, acknowledgments])
-
-  const filteredWorks = useMemo(() => {
-    if (!query) return unsignedWorks
-    return unsignedWorks.filter(
-      (overview) =>
-        overview.work.title.toLowerCase().includes(query.toLowerCase()) ||
-        overview.work.description.toLowerCase().includes(query.toLowerCase())
-    )
-  }, [unsignedWorks, query])
+  const unsignedWorks = dailyOverview.filter((overview) => !acknowledgments[overview.work.id])
 
   return (
     <div className="space-y-8">
@@ -86,7 +92,7 @@ export default function UnsignedWorksPage() {
         </div>
 
         <div className="divide-y">
-          {filteredWorks.length === 0 ? (
+          {unsignedWorks.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <p className="text-sm text-muted-foreground">
                 {query
@@ -95,7 +101,7 @@ export default function UnsignedWorksPage() {
               </p>
             </div>
           ) : (
-            filteredWorks.map((overview) => (
+            unsignedWorks.map((overview) => (
               <button
                 key={overview.work.id}
                 type="button"

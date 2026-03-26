@@ -1,7 +1,6 @@
-import { useMemo } from 'react'
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { ClipboardList, ShieldAlert, Users, AlertTriangle, Info, CheckCircle, ChevronRight, TrendingUp, BarChart3, Sparkles, Zap, Target } from 'lucide-react'
+import { ClipboardList, ShieldAlert, Users, AlertTriangle, Info, CheckCircle, ChevronRight, TrendingUp, Sparkles, Zap, Target } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts'
 import PageHeader from '@/components/layout/PageHeader'
 import { createIncidentsQueryOptions } from '@/features/incidents/api/queries'
@@ -14,30 +13,82 @@ import {
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { Button as BitButton } from '@/components/ui/8bit/button'
 
+const selectRecentIncidents = <T extends { id: number }>(incidents: T[]) => incidents.slice(0, 5)
+
+const selectRiskTrendData = (
+  risks: Array<{ severity: 'high' | 'medium' | 'low' }>,
+) => {
+  const counts = risks.reduce<Record<'high' | 'medium' | 'low', number>>(
+    (accumulator, risk) => {
+      accumulator[risk.severity] += 1
+      return accumulator
+    },
+    { high: 0, medium: 0, low: 0 },
+  )
+
+  return {
+    riskCount: risks.length,
+    riskTrendData: [
+      { date: 'High', count: counts.high },
+      { date: 'Medium', count: counts.medium },
+      { date: 'Low', count: counts.low },
+    ],
+  }
+}
+
+const selectActiveNotifications = <T extends {
+  pinned?: boolean
+  display_until?: string | null
+  created_at: string
+}>(notifications: T[]) => {
+  const now = new Date()
+  return [...notifications]
+    .filter((notification) =>
+      notification.pinned ||
+      !notification.display_until ||
+      new Date(notification.display_until) >= now,
+    )
+    .sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1
+      if (!a.pinned && b.pinned) return 1
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+    .slice(0, 3)
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate()
   const date = new Date().toISOString().slice(0, 10)
   const dailyOverviewQuery = useQuery(createWorkDailyOverviewQueryOptions(date))
-  const incidentsQuery = useQuery(createIncidentsQueryOptions())
-  const notificationsQuery = useQuery(createNotificationsQueryOptions({ limit: 20 }))
-  const risksQuery = useQuery(createRiskRecordsQueryOptions())
+  const incidentsQuery = useQuery(
+    createIncidentsQueryOptions({
+      select: selectRecentIncidents,
+    }),
+  )
+  const notificationsQuery = useQuery(
+    createNotificationsQueryOptions({ limit: 20 }, {
+      select: selectActiveNotifications,
+    }),
+  )
+  const risksQuery = useQuery(
+    createRiskRecordsQueryOptions({
+      select: selectRiskTrendData,
+    }),
+  )
   const dailyOverview = dailyOverviewQuery.data ?? []
-  const incidents = incidentsQuery.data ?? []
-  const notifications = notificationsQuery.data ?? []
-  const risks = risksQuery.data ?? []
+  const recentIncidents = incidentsQuery.data ?? []
+  const activeNotifications = notificationsQuery.data ?? []
+  const riskView = risksQuery.data ?? { riskCount: 0, riskTrendData: [] }
   const acknowledgmentQueries = useQueries({
     queries: dailyOverview.map((overview) => ({
       ...createWorkAcknowledgmentQueryOptions(overview.work.id),
       retry: false,
     })),
   })
-  const acknowledgments = useMemo(
-    () => dailyOverview.reduce<Record<number, boolean>>((accumulator, overview, index) => {
-      accumulator[overview.work.id] = Boolean(acknowledgmentQueries[index]?.data)
-      return accumulator
-    }, {}),
-    [acknowledgmentQueries, dailyOverview],
-  )
+  const acknowledgments = dailyOverview.reduce<Record<number, boolean>>((accumulator, overview, index) => {
+    accumulator[overview.work.id] = Boolean(acknowledgmentQueries[index]?.data)
+    return accumulator
+  }, {})
 
   const chartConfig = {
     count: {
@@ -46,38 +97,8 @@ export default function DashboardPage() {
     },
   } satisfies ChartConfig
 
-  const todayWorks = useMemo(() => dailyOverview.slice(0, 5), [dailyOverview])
-  const recentIncidents = useMemo(() => incidents.slice(0, 5), [incidents])
-  const unsignedWorks = useMemo(() => {
-    return dailyOverview.filter((overview) => !acknowledgments[overview.work.id])
-  }, [dailyOverview, acknowledgments])
-
-  const riskTrendData = useMemo(() => {
-    const counts = risks.reduce<Record<'high' | 'medium' | 'low', number>>(
-      (accumulator, risk) => {
-        accumulator[risk.severity] += 1
-        return accumulator
-      },
-      { high: 0, medium: 0, low: 0 },
-    )
-    return [
-      { date: 'High', count: counts.high },
-      { date: 'Medium', count: counts.medium },
-      { date: 'Low', count: counts.low },
-    ]
-  }, [risks])
-
-  const activeNotifications = useMemo(() => {
-    const now = new Date()
-    return [...notifications]
-      .filter((n) => n.pinned || !n.display_until || new Date(n.display_until) >= now)
-      .sort((a, b) => {
-        if (a.pinned && !b.pinned) return -1
-        if (!a.pinned && b.pinned) return 1
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      })
-      .slice(0, 3)
-  }, [notifications])
+  const todayWorks = dailyOverview.slice(0, 5)
+  const unsignedWorks = dailyOverview.filter((overview) => !acknowledgments[overview.work.id])
 
   return (
     <div className="min-h-screen gradient-mesh">
@@ -165,7 +186,7 @@ export default function DashboardPage() {
                 </div>
                 <Target className="h-5 w-5 text-emerald-500/40 transition-all duration-300 group-hover:text-emerald-500" />
               </div>
-              <p className="text-4xl font-bold tracking-tight text-gradient">{risks.length}</p>
+              <p className="text-4xl font-bold tracking-tight text-gradient">{riskView.riskCount}</p>
               <p className="mt-2 text-sm font-medium text-muted-foreground">登録済みリスク</p>
             </div>
           </div>
@@ -239,7 +260,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <ChartContainer config={chartConfig} className="h-64 w-full">
-            <BarChart data={riskTrendData} accessibilityLayer>
+            <BarChart data={riskView.riskTrendData} accessibilityLayer>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
               <XAxis
                 dataKey="date"

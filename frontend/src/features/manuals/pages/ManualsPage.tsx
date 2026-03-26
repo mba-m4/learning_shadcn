@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
@@ -6,16 +6,24 @@ import { Input } from '@/components/ui/input'
 import PageHeader from '@/components/layout/PageHeader'
 import { createManualsQueryOptions } from '@/features/manuals/api/queries'
 import { getErrorMessage } from '@/shared/api/client'
+import type { Manual } from '@/types/api'
 
 export default function ManualsPage() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
-  const manualsQuery = useQuery(createManualsQueryOptions())
-  const manuals = manualsQuery.data ?? []
-
-  const filtered = manuals.filter((manual) =>
-    manual.title.toLowerCase().includes(query.toLowerCase()),
+  const selectFilteredManuals = useCallback(
+    (manuals: Manual[]) =>
+      manuals.filter((manual) =>
+        manual.title.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [query],
   )
+  const manualsQuery = useQuery(
+    createManualsQueryOptions({
+      select: selectFilteredManuals,
+    }),
+  )
+  const filtered = manualsQuery.data ?? []
 
   return (
     <div className="space-y-8">

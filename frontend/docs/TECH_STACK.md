@@ -89,24 +89,24 @@ Pattern:
 - Query factories own `queryKey` and `queryFn`.
 - Mutation factories own invalidation rules.
 - Zustand should not be the long-term owner of server response caches.
-- Errors are normalized through [frontend/src/lib/api/client.ts](../src/lib/api/client.ts).
+- Errors are normalized through [frontend/src/shared/api/client.ts](../src/shared/api/client.ts).
 
 ## API Layer
 
-HTTP calls live under `frontend/src/lib/api`.
+HTTP calls are split between shared transport infrastructure and feature API modules.
 
-- Base client: [frontend/src/lib/api/client.ts](../src/lib/api/client.ts)
-- Query client: [frontend/src/lib/api/queryClient.ts](../src/lib/api/queryClient.ts)
-- Query keys: [frontend/src/lib/api/queryKeys.ts](../src/lib/api/queryKeys.ts)
-- Zod schemas: [frontend/src/lib/api/schemas](../src/lib/api/schemas)
-- Query factories: [frontend/src/lib/api/queries](../src/lib/api/queries)
-- Auth: [frontend/src/lib/api/auth.ts](../src/lib/api/auth.ts)
-- Works: [frontend/src/lib/api/works.ts](../src/lib/api/works.ts)
-- Risks (registry): [frontend/src/lib/api/riskRegistry.ts](../src/lib/api/riskRegistry.ts)
-- Incidents: [frontend/src/lib/api/incidents.ts](../src/lib/api/incidents.ts)
-- Manuals: [frontend/src/lib/api/manuals.ts](../src/lib/api/manuals.ts)
-- Meetings: [frontend/src/lib/api/meetings.ts](../src/lib/api/meetings.ts)
-- My Works: [frontend/src/lib/api/myWorks.ts](../src/lib/api/myWorks.ts)
+- Shared client: [frontend/src/shared/api/client.ts](../src/shared/api/client.ts)
+- Query client: [frontend/src/shared/api/queryClient.ts](../src/shared/api/queryClient.ts)
+- Query keys: [frontend/src/shared/api/queryKeys.ts](../src/shared/api/queryKeys.ts)
+- Shared zod schemas: [frontend/src/shared/api/schemas](../src/shared/api/schemas)
+- Auth API: [frontend/src/features/auth/api/service.ts](../src/features/auth/api/service.ts)
+- Config API: [frontend/src/features/config/api](../src/features/config/api)
+- Works API: [frontend/src/features/works/api](../src/features/works/api)
+- Risks registry API: [frontend/src/features/risk-registry/api](../src/features/risk-registry/api)
+- Incidents API: [frontend/src/features/incidents/api](../src/features/incidents/api)
+- Manuals API: [frontend/src/features/manuals/api](../src/features/manuals/api)
+- Meetings API: [frontend/src/features/meetings/api](../src/features/meetings/api)
+- Notifications API: [frontend/src/features/notifications/api](../src/features/notifications/api)
 
 Env:
 
@@ -153,9 +153,9 @@ The DB is re-created on startup (seed data is inserted each run).
 ## How to add a new page end-to-end
 
 1) Create API endpoint in FastAPI routes.
-2) Add client function in `frontend/src/lib/api`.
-3) Add store methods in `frontend/src/stores`.
-4) Create page in `frontend/src/pages`.
+2) Add or update a feature service under `frontend/src/features/<domain>/api` and use `frontend/src/shared/api` only if the concern is cross-feature infrastructure.
+3) Add store methods only for UI/auth/draft state in `frontend/src/stores` or `frontend/src/features/<domain>/model`.
+4) Create the page in `frontend/src/features/<domain>/pages`.
 5) Register route in [frontend/src/app/routes.tsx](../src/app/routes.tsx).
 6) Add sidebar item in [frontend/src/components/layout/AppShell.tsx](../src/components/layout/AppShell.tsx).
 

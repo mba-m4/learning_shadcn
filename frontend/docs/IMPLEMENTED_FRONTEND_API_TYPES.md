@@ -10,14 +10,14 @@
 
 This document inventories the API surface that the current frontend implementation actually depends on.
 
-- Source of truth: frontend implementation under `src/lib/api`, `src/stores`, and direct `request()` usage.
+- Source of truth: frontend implementation under `src/shared/api`, `src/features/*/api`, `src/stores`, and direct `request()` usage.
 - Goal: document request and response types required by the frontend, not just what is currently present in `openapi.json`.
 - Scope: endpoints currently called by the frontend.
 
 ## Base Rules
 
 - Base URL: `import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'`
-- Shared client: `src/lib/api/client.ts`
+- Shared client: `src/shared/api/client.ts`
 - Default headers:
   - `Accept: application/json`
   - `Content-Type: application/json` when `body` exists and is not `FormData`
@@ -26,7 +26,7 @@ This document inventories the API surface that the current frontend implementati
 
 ## Shared Response Types
 
-These shared TypeScript types are defined in `src/types/api.ts` and reused across multiple endpoints.
+These shared TypeScript types are defined in `src/types/api/*` modules and reused across multiple endpoints.
 
 ```ts
 export type Role = 'leader' | 'worker' | 'safety_manager'
@@ -308,7 +308,7 @@ export interface Notification {
 
 #### `POST /auth/login`
 
-- Implementation: `src/lib/api/auth.ts`
+- Implementation: `src/features/auth/api/service.ts`
 - Auth required: no
 - Content-Type: `application/x-www-form-urlencoded`
 - Request type:
@@ -328,7 +328,7 @@ type LoginResponse = TokenResponse
 
 #### `GET /auth/me`
 
-- Implementation: `src/lib/api/auth.ts`
+- Implementation: `src/features/auth/api/service.ts`
 - Auth required: yes
 - Request body: none
 - Response type:
@@ -341,7 +341,7 @@ type MeResponse = User
 
 #### `GET /works/groups`
 
-- Implementation: `src/lib/api/works.ts`
+- Implementation: `src/features/works/api/works.ts`
 - Request body: none
 - Response type:
 
@@ -351,7 +351,7 @@ type FetchGroupsResponse = WorkGroup[]
 
 #### `POST /works/groups`
 
-- Implementation: `src/lib/api/works.ts`
+- Implementation: `src/features/works/api/works.ts`
 - Request type:
 
 ```ts
@@ -368,7 +368,7 @@ type CreateGroupResponse = WorkGroup
 
 #### `GET /works/daily?work_date=YYYY-MM-DD`
 
-- Implementation: `src/lib/api/works.ts`
+- Implementation: `src/features/works/api/works.ts`
 - Query type:
 
 ```ts
@@ -385,7 +385,7 @@ type FetchDailyOverviewResponse = WorkOverview[]
 
 #### `POST /works`
 
-- Implementation: `src/lib/api/works.ts`
+- Implementation: `src/features/works/api/works.ts`
 - Request type:
 
 ```ts
@@ -406,7 +406,7 @@ type CreateWorkResponse = Work
 
 #### `POST /works/{workId}/items`
 
-- Implementation: `src/lib/api/works.ts`
+- Implementation: `src/features/works/api/works.ts`
 - Path params:
 
 ```ts
@@ -432,7 +432,7 @@ type AddWorkItemResponse = WorkItem
 
 #### `POST /works/items/{workItemId}/risks/generate`
 
-- Implementation: `src/lib/api/works.ts`
+- Implementation: `src/features/works/api/works.ts`
 - Request body: none
 - Response type:
 
@@ -442,7 +442,7 @@ type GenerateRiskResponse = RiskAssessment
 
 #### `GET /works/{workId}`
 
-- Implementation: `src/lib/api/works.ts`
+- Implementation: `src/features/works/api/works.ts`
 - Request body: none
 - Response type:
 
@@ -452,7 +452,7 @@ type FetchWorkDetailResponse = WorkOverview
 
 #### `GET /works?start_date=&end_date=&limit=&offset=`
 
-- Implementation: `src/lib/api/works.ts`
+- Implementation: `src/features/works/api/works.ts`
 - Query type:
 
 ```ts
@@ -472,7 +472,7 @@ type FetchWorkListResponse = WorkListResponse
 
 #### `GET /works/dates?start_date=&end_date=`
 
-- Implementation: `src/lib/api/works.ts`
+- Implementation: `src/features/works/api/works.ts`
 - Query type:
 
 ```ts
@@ -492,7 +492,7 @@ type FetchWorkDateSummaryResponse = WorkDateSummary[]
 
 #### `GET /works/items/{workItemId}/risks/manual`
 
-- Implementation: `src/lib/api/risks.ts`
+- Implementation: `src/features/works/api/risks.ts`
 - Request body: none
 - Response type:
 
@@ -502,7 +502,7 @@ type FetchManualRisksResponse = ManualRisk[]
 
 #### `POST /works/items/{workItemId}/risks/manual`
 
-- Implementation: `src/lib/api/risks.ts`
+- Implementation: `src/features/works/api/risks.ts`
 - Request type:
 
 ```ts
@@ -520,7 +520,7 @@ type CreateManualRiskResponse = ManualRisk
 
 #### `PATCH /works/items/risks/manual/{riskId}`
 
-- Implementation: `src/lib/api/risks.ts`
+- Implementation: `src/features/works/api/risks.ts`
 - Request type:
 
 ```ts
@@ -538,7 +538,7 @@ type UpdateManualRiskResponse = ManualRisk
 
 #### `DELETE /works/items/risks/manual/{riskId}`
 
-- Implementation: `src/lib/api/risks.ts`
+- Implementation: `src/features/works/api/risks.ts`
 - Request body: none
 - Response type:
 
@@ -550,7 +550,7 @@ type DeleteManualRiskResponse = {
 
 #### `PATCH /works/items/risks/ai/{riskId}`
 
-- Implementation: `src/lib/api/risks.ts`
+- Implementation: `src/features/works/api/risks.ts`
 - Request type:
 
 ```ts
@@ -568,7 +568,7 @@ type UpdateRiskAssessmentResponse = RiskAssessment
 
 #### `DELETE /works/items/risks/ai/{riskId}`
 
-- Implementation: `src/lib/api/risks.ts`
+- Implementation: `src/features/works/api/risks.ts`
 - Request body: none
 - Response type:
 
@@ -580,7 +580,7 @@ type DeleteRiskAssessmentResponse = {
 
 #### `GET /works/{workId}/risk-summary`
 
-- Implementation: `src/lib/api/risks.ts`
+- Implementation: `src/features/works/api/risks.ts`
 - Response type:
 
 ```ts
@@ -591,7 +591,7 @@ type FetchRiskSummaryResponse = RiskSummary
 
 #### `GET /risks`
 
-- Implementation: `src/lib/api/riskRegistry.ts`
+- Implementation: `src/features/risk-registry/api/service.ts`
 - Response type:
 
 ```ts
@@ -600,7 +600,7 @@ type FetchRisksResponse = RiskRecord[]
 
 #### `GET /risks/{riskId}`
 
-- Implementation: `src/lib/api/riskRegistry.ts`
+- Implementation: `src/features/risk-registry/api/service.ts`
 - Response type:
 
 ```ts
@@ -609,7 +609,7 @@ type FetchRiskResponse = RiskRecord
 
 #### `PATCH /risks/{riskId}/status`
 
-- Implementation: `src/lib/api/riskRegistry.ts`
+- Implementation: `src/features/risk-registry/api/service.ts`
 - Request type:
 
 ```ts
@@ -626,7 +626,7 @@ type UpdateRiskStatusResponse = RiskRecord
 
 #### `PATCH /risks/{riskId}/severity`
 
-- Implementation: `src/lib/api/riskRegistry.ts`
+- Implementation: `src/features/risk-registry/api/service.ts`
 - Request type:
 
 ```ts
@@ -643,7 +643,7 @@ type UpdateRiskSeverityResponse = RiskRecord
 
 #### `POST /risks/{riskId}/actions`
 
-- Implementation: `src/lib/api/riskRegistry.ts`
+- Implementation: `src/features/risk-registry/api/service.ts`
 - Request type:
 
 ```ts
@@ -662,7 +662,7 @@ type AddRiskActionResponse = RiskRecord
 
 #### `GET /incidents`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Response type:
 
 ```ts
@@ -671,7 +671,7 @@ type FetchIncidentsResponse = Incident[]
 
 #### `GET /incidents/{incidentId}`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Response type:
 
 ```ts
@@ -680,7 +680,7 @@ type FetchIncidentResponse = Incident
 
 #### `PATCH /incidents/{incidentId}/status`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Request type:
 
 ```ts
@@ -697,7 +697,7 @@ type UpdateIncidentStatusResponse = Incident
 
 #### `POST /incidents/{incidentId}/actions`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Request type:
 
 ```ts
@@ -714,7 +714,7 @@ type AddIncidentActionResponse = Incident
 
 #### `POST /incidents`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Request type:
 
 ```ts
@@ -739,7 +739,7 @@ type CreateIncidentResponse = Incident
 
 #### `PATCH /incidents/{incidentId}/assignment`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Request type:
 
 ```ts
@@ -756,7 +756,7 @@ type UpdateIncidentAssignmentResponse = Incident
 
 #### `POST /incidents/{incidentId}/labels`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Request type:
 
 ```ts
@@ -773,7 +773,7 @@ type AddIncidentLabelResponse = Incident
 
 #### `DELETE /incidents/{incidentId}/labels/{label}`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Request body: none
 - Response type:
 
@@ -783,7 +783,7 @@ type RemoveIncidentLabelResponse = Incident
 
 #### `GET /incidents/{incidentId}/comments`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Response type:
 
 ```ts
@@ -792,7 +792,7 @@ type FetchIncidentCommentsResponse = IncidentComment[]
 
 #### `POST /incidents/{incidentId}/comments`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Request type:
 
 ```ts
@@ -809,7 +809,7 @@ type AddIncidentCommentResponse = IncidentComment
 
 #### `PATCH /incidents/{incidentId}/comments/{commentId}`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Request type:
 
 ```ts
@@ -826,7 +826,7 @@ type UpdateIncidentCommentResponse = IncidentComment
 
 #### `DELETE /incidents/{incidentId}/comments/{commentId}`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Request body: none
 - Response type:
 
@@ -836,7 +836,7 @@ type DeleteIncidentCommentResponse = void
 
 #### `GET /incidents/{incidentId}/activities`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Response type:
 
 ```ts
@@ -845,7 +845,7 @@ type FetchIncidentActivitiesResponse = IncidentActivity[]
 
 #### `GET /users`
 
-- Implementation: `src/lib/api/incidents.ts`
+- Implementation: `src/features/incidents/api/service.ts`
 - Response type:
 
 ```ts
@@ -856,7 +856,7 @@ type FetchUsersResponse = User[]
 
 #### `GET /works/{workId}/comments`
 
-- Implementation: `src/lib/api/comments.ts`
+- Implementation: `src/features/works/api/comments.ts`
 - Auth mode in code: `withAuth = false`
 - Response type:
 
@@ -866,7 +866,7 @@ type FetchCommentsResponse = Comment[]
 
 #### `POST /works/{workId}/comments`
 
-- Implementation: `src/lib/api/comments.ts`
+- Implementation: `src/features/works/api/comments.ts`
 - Request type:
 
 ```ts
@@ -885,7 +885,7 @@ type AddCommentResponse = Comment
 
 #### `GET /meetings`
 
-- Implementation: `src/lib/api/meetings.ts`
+- Implementation: `src/features/meetings/api/service.ts`
 - Response type:
 
 ```ts
@@ -894,7 +894,7 @@ type FetchMeetingsResponse = Meeting[]
 
 #### `GET /meetings/{meetingId}`
 
-- Implementation: `src/lib/api/meetings.ts`
+- Implementation: `src/features/meetings/api/service.ts`
 - Response type:
 
 ```ts
@@ -903,7 +903,7 @@ type FetchMeetingResponse = Meeting
 
 #### `PATCH /meetings/{meetingId}/sync-state`
 
-- Implementation: `src/lib/api/meetings.ts`
+- Implementation: `src/features/meetings/api/service.ts`
 - Request type:
 
 ```ts
@@ -920,7 +920,7 @@ type UpdateMeetingSyncStateResponse = Meeting
 
 #### `GET /meetings/uploads?meeting_id=`
 
-- Implementation: `src/lib/api/meetings.ts`
+- Implementation: `src/features/meetings/api/service.ts`
 - Query type:
 
 ```ts
@@ -937,7 +937,7 @@ type FetchMeetingUploadsResponse = MeetingUpload[]
 
 #### `POST /meetings/uploads`
 
-- Implementation: `src/lib/api/meetings.ts`
+- Implementation: `src/features/meetings/api/service.ts`
 - Request type:
 
 ```ts
@@ -957,7 +957,7 @@ type AddMeetingUploadsResponse = MeetingUpload[]
 
 #### `GET /manuals`
 
-- Implementation: `src/lib/api/manuals.ts`
+- Implementation: `src/features/manuals/api/service.ts`
 - Response type:
 
 ```ts
@@ -966,7 +966,7 @@ type FetchManualsResponse = Manual[]
 
 #### `GET /manuals/{manualId}`
 
-- Implementation: `src/lib/api/manuals.ts`
+- Implementation: `src/features/manuals/api/service.ts`
 - Response type:
 
 ```ts
@@ -977,7 +977,7 @@ type FetchManualResponse = Manual
 
 #### `GET /notifications?unread_only=&limit=`
 
-- Implementation: `src/lib/api/notifications.ts`
+- Implementation: `src/features/notifications/api/service.ts`
 - Query type used by frontend:
 
 ```ts
@@ -1004,7 +1004,7 @@ type FetchNotificationsResponse = Notification[]
 
 #### `PATCH /notifications/{notificationId}/read`
 
-- Implementation: `src/lib/api/notifications.ts`
+- Implementation: `src/features/notifications/api/service.ts`
 - Request body: none
 - Response type:
 
@@ -1014,7 +1014,7 @@ type MarkNotificationAsReadResponse = Notification
 
 #### `POST /notifications`
 
-- Implementation: `src/lib/api/notifications.ts`
+- Implementation: `src/features/notifications/api/service.ts`
 - Request type:
 
 ```ts
@@ -1038,7 +1038,7 @@ type CreateNotificationResponse = Notification
 
 #### `GET /my-works?limit=&offset=`
 
-- Implementation: `src/lib/api/myWorks.ts`
+- Implementation: `src/mocks/handlers.ts`
 - Query type:
 
 ```ts
@@ -1056,7 +1056,7 @@ type FetchMyWorksResponse = MyWorkListResponse
 
 #### `GET /my-works/{workId}`
 
-- Implementation: `src/lib/api/myWorks.ts`
+- Implementation: `src/mocks/handlers.ts`
 - Response type:
 
 ```ts
@@ -1065,7 +1065,7 @@ type FetchMyWorkResponse = MyWork
 
 #### `GET /my-works/{workId}/assets`
 
-- Implementation: `src/lib/api/myWorks.ts`
+- Implementation: `src/mocks/handlers.ts`
 - Response type:
 
 ```ts
@@ -1074,7 +1074,7 @@ type FetchWorkAssetsResponse = WorkAsset
 
 #### `POST /my-works/{workId}/assets/photos`
 
-- Implementation: `src/lib/api/myWorks.ts`
+- Implementation: `src/mocks/handlers.ts`
 - Request type:
 
 ```ts
@@ -1091,7 +1091,7 @@ type AddWorkPhotosResponse = WorkAsset
 
 #### `POST /my-works/{workId}/assets/audios`
 
-- Implementation: `src/lib/api/myWorks.ts`
+- Implementation: `src/mocks/handlers.ts`
 - Request type:
 
 ```ts
@@ -1108,7 +1108,7 @@ type AddWorkAudiosResponse = WorkAsset
 
 #### `POST /my-works/{workId}/assets/notes`
 
-- Implementation: `src/lib/api/myWorks.ts`
+- Implementation: `src/mocks/handlers.ts`
 - Request type:
 
 ```ts

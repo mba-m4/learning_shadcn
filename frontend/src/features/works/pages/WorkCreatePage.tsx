@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -13,24 +14,69 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import PageHeader from '@/components/layout/PageHeader'
-import { addWorkItem } from '@/features/works/api/service'
-import { useWorkContext } from '@/stores/workContext'
+import { getErrorMessage } from '@/shared/api/client'
+import { queryKeys } from '@/shared/api/queryKeys'
+import { createWorkGroupsQueryOptions } from '@/features/works/api/queries'
+import { addWorkItem, createWork } from '@/features/works/api/service'
+
+interface WorkDraft {
+  title: string
+  description: string
+  group_id: number | null
+  work_date: string
+  status: 'draft' | 'confirmed'
+  items: Array<{ name: string; description: string }>
+}
+
+const getToday = () => new Date().toISOString().slice(0, 10)
+
+const createDefaultDraft = (): WorkDraft => ({
+  title: '',
+  description: '',
+  group_id: null,
+  work_date: getToday(),
+  status: 'draft',
+  items: [],
+})
 
 export default function WorkCreatePage() {
   const navigate = useNavigate()
-  const { groups, draft, fetchGroups, initializeDraft, setDraftField, addDraftItem, removeDraftItem, createWork, resetDraft } =
-    useWorkContext()
+  const queryClient = useQueryClient()
+  const [draft, setDraft] = useState<WorkDraft>(createDefaultDraft)
   const [itemName, setItemName] = useState('')
   const [itemDescription, setItemDescription] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const groupsQuery = useQuery(createWorkGroupsQueryOptions())
+  const createWorkMutation = useMutation({
+    mutationFn: createWork,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.works.all() })
+    },
+  })
 
-  useEffect(() => {
-    void fetchGroups()
-    initializeDraft()
-  }, [fetchGroups, initializeDraft])
+  const groups = groupsQuery.data ?? []
 
-  if (!draft) {
-    return <p>読み込み中...</p>
+  const setDraftField = <K extends keyof WorkDraft>(key: K, value: WorkDraft[K]) => {
+    setDraft((state) => ({ ...state, [key]: value }))
+  }
+
+  const addDraftItem = (name: string, description: string) => {
+    setDraft((state) => ({
+      ...state,
+      items: [...state.items, { name, description }],
+    }))
+  }
+
+  const removeDraftItem = (index: number) => {
+    setDraft((state) => ({
+      ...state,
+      items: state.items.filter((_, itemIndex) => itemIndex !== index),
+    }))
+  }
+
+  const resetDraft = () => {
+    setDraft(createDefaultDraft())
+    setItemName('')
+    setItemDescription('')
   }
 
   const handleAddItem = () => {
@@ -53,9 +99,8 @@ export default function WorkCreatePage() {
       return
     }
 
-    setSubmitting(true)
     try {
-      const createdWork = await createWork({
+      const createdWork = await createWorkMutation.mutateAsync({
         title: draft.title.trim(),
         description: draft.description.trim(),
         group_id: draft.group_id,
@@ -70,11 +115,10 @@ export default function WorkCreatePage() {
       }
 
       toast.success('作業を作成しました。')
+      resetDraft()
       navigate(`/works/${createdWork.id}`)
     } catch (error) {
-      toast.error('作業の作成に失敗しました。')
-    } finally {
-      setSubmitting(false)
+      toast.error(getErrorMessage(error))
     }
   }
 
@@ -142,7 +186,7 @@ export default function WorkCreatePage() {
                   <Label>ステータス</Label>
                   <Select
                     value={draft.status}
-                    onValueChange={(value: any) => setDraftField('status', value)}
+                    onValueChange={(value: 'draft' | 'confirmed') => setDraftField('status', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="ステータス" />
@@ -165,6 +209,11 @@ export default function WorkCreatePage() {
                       <SelectValue placeholder="グループを選択" />
                     </SelectTrigger>
                     <SelectContent>
+                      {groupsQuery.error && (
+                        <div className="px-2 py-1 text-xs text-destructive">
+                          {getErrorMessage(groupsQuery.error)}
+                        </div>
+                      )}
                       {groups.map((group) => (
                         <SelectItem key={group.id} value={String(group.id)}>
                           {group.name}
@@ -244,8 +293,8 @@ export default function WorkCreatePage() {
           </section>
         </div>
         <div className="flex gap-2">
-          <Button type="submit" disabled={submitting}>
-            {submitting ? '作成中...' : '作成する'}
+          <Button type="submit" disabled={createWorkMutation.isPending}>
+            {createWorkMutation.isPending ? '作成中...' : '作成する'}
           </Button>
           <Button type="button" variant="outline" onClick={() => resetDraft()}>
             リセット

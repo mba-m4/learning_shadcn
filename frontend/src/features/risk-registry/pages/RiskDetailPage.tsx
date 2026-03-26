@@ -1,11 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AlertTriangle, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import PageHeader from '@/components/layout/PageHeader'
-import { useRiskRegistryStore } from '@/stores/riskRegistryStore'
+import { getErrorMessage } from '@/shared/api/client'
+import {
+  createRiskActionMutationOptions,
+  createRiskDetailQueryOptions,
+  createRiskSeverityMutationOptions,
+  createRiskStatusMutationOptions,
+} from '@/features/risk-registry/api/queries'
 
 type RiskSeverity = 'low' | 'medium' | 'high'
 
@@ -35,19 +42,38 @@ export default function RiskDetailPage() {
   const { riskId } = useParams()
   const riskIdNumber = Number(riskId)
   const navigate = useNavigate()
-  const { risks, fetchRisk, updateSeverity, updateStatus, addAction } = useRiskRegistryStore()
-  const risk = useMemo(
-    () => risks.find((item) => item.id === riskIdNumber),
-    [riskIdNumber, risks],
-  )
   const [newAction, setNewAction] = useState('')
+  const riskQuery = useQuery({
+    ...createRiskDetailQueryOptions(riskIdNumber),
+    enabled: Number.isFinite(riskIdNumber),
+  })
+  const updateSeverityMutation = useMutation(
+    createRiskSeverityMutationOptions(riskIdNumber),
+  )
+  const updateStatusMutation = useMutation(
+    createRiskStatusMutationOptions(riskIdNumber),
+  )
+  const addActionMutation = useMutation(createRiskActionMutationOptions(riskIdNumber))
+  const risk = riskQuery.data
 
-  useEffect(() => {
-    if (Number.isNaN(riskIdNumber)) {
-      return
-    }
-    void fetchRisk(riskIdNumber)
-  }, [fetchRisk, riskIdNumber])
+  if (Number.isNaN(riskIdNumber)) {
+    return <p className="text-sm text-muted-foreground">リスクIDが不正です。</p>
+  }
+
+  if (riskQuery.isLoading) {
+    return <p className="text-sm text-muted-foreground">読み込み中...</p>
+  }
+
+  if (riskQuery.error) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">{getErrorMessage(riskQuery.error)}</p>
+        <Button variant="outline" onClick={() => navigate('/risk')}>
+          一覧へ戻る
+        </Button>
+      </div>
+    )
+  }
 
   if (!risk) {
     return (
@@ -92,14 +118,13 @@ export default function RiskDetailPage() {
               <button
                 key={level}
                 type="button"
-                onClick={() => {
-                  updateSeverity(risk.id, level).then((result) => {
-                    if (result) {
-                      toast.success(`重要度を ${level} に更新しました。`)
-                    } else {
-                      toast.error('重要度の更新に失敗しました。')
-                    }
-                  })
+                onClick={async () => {
+                  try {
+                    await updateSeverityMutation.mutateAsync({ severity: level })
+                    toast.success(`重要度を ${level} に更新しました。`)
+                  } catch (error) {
+                    toast.error(getErrorMessage(error))
+                  }
                 }}
                 className={`rounded-full px-2 py-1 font-medium transition-all ${
                   risk.severity === level
@@ -116,14 +141,13 @@ export default function RiskDetailPage() {
               <button
                 key={state}
                 type="button"
-                onClick={() => {
-                  updateStatus(risk.id, state).then((result) => {
-                    if (result) {
-                      toast.success(`ステータスを ${state} に更新しました。`)
-                    } else {
-                      toast.error('ステータスの更新に失敗しました。')
-                    }
-                  })
+                onClick={async () => {
+                  try {
+                    await updateStatusMutation.mutateAsync({ status: state })
+                    toast.success(`ステータスを ${state} に更新しました。`)
+                  } catch (error) {
+                    toast.error(getErrorMessage(error))
+                  }
                 }}
                 className={`rounded-full px-2 py-1 font-medium transition-all ${
                   risk.status === state
@@ -179,16 +203,15 @@ export default function RiskDetailPage() {
             />
             <Button
               size="sm"
-              onClick={() => {
+              onClick={async () => {
                 if (!newAction.trim()) return
-                addAction(risk.id, newAction.trim()).then((result) => {
-                  if (result) {
-                    setNewAction('')
-                    toast.success('是正措置を追加しました。')
-                  } else {
-                    toast.error('是正措置の追加に失敗しました。')
-                  }
-                })
+                try {
+                  await addActionMutation.mutateAsync({ action: newAction.trim() })
+                  setNewAction('')
+                  toast.success('是正措置を追加しました。')
+                } catch (error) {
+                  toast.error(getErrorMessage(error))
+                }
               }}
             >
               追加
