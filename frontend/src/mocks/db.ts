@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker'
 import { factory, primaryKey } from '@mswjs/data'
+import type { RiskLevel } from '@/types/api'
 
 const seedDate = '2026-03-26T09:00:00.000Z'
 
@@ -32,14 +33,20 @@ export const mockDb = factory({
   aiRisk: {
     id: primaryKey(Number),
     work_item_id: Number,
+    title: String,
     content: String,
+    severity: String,
+    risk_level: String,
     action: String,
     generated_at: String,
   },
   manualRisk: {
     id: primaryKey(Number),
     work_item_id: Number,
+    title: String,
     content: String,
+    severity: String,
+    risk_level: String,
     action: String,
     created_at: String,
   },
@@ -394,11 +401,17 @@ export const mockDbReaders = {
   listAiRisks: (workItemId?: number) =>
     mockDb.aiRisk.getAll().filter((risk) => (workItemId ? risk.work_item_id === workItemId : true)).map((risk) => ({
       ...risk,
+      title: risk.title || null,
+      severity: (risk.severity || null) as RiskLevel | null,
+      risk_level: (risk.risk_level || null) as RiskLevel | null,
       action: risk.action || null,
     })),
   listManualRisks: (workItemId?: number) =>
     mockDb.manualRisk.getAll().filter((risk) => (workItemId ? risk.work_item_id === workItemId : true)).map((risk) => ({
       ...risk,
+      title: risk.title || null,
+      severity: (risk.severity || null) as RiskLevel | null,
+      risk_level: (risk.risk_level || null) as RiskLevel | null,
       action: risk.action || null,
     })),
   listWorkComments: (workId?: number) =>
@@ -412,6 +425,9 @@ export const mockDbReaders = {
           item,
           risks: mockDb.aiRisk.getAll().filter((risk) => risk.work_item_id === item.id).map((risk) => ({
             ...risk,
+            title: risk.title || null,
+            severity: (risk.severity || null) as RiskLevel | null,
+            risk_level: (risk.risk_level || null) as RiskLevel | null,
             action: risk.action || null,
           })),
         })),

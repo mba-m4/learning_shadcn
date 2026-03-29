@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query'
 import type {
 	Comment,
+	RiskLevel,
 	ManualRisk,
 	RiskSummary,
 	WorkDateSummary,
@@ -19,7 +20,6 @@ import { queryClient } from '@/shared/api/queryClient'
 import { queryKeys } from '@/shared/api/queryKeys'
 import {
 	addComment,
-	addWorkItem,
 	createGroup,
 	createManualRisk,
 	createWork,
@@ -81,7 +81,17 @@ export const createWorkMutationOptions = () =>
 			group_id: number
 			work_date: string
 			status: 'draft' | 'confirmed'
-			items: Array<{ name: string; description: string }>
+			items: Array<{
+				name: string
+				description: string
+				risks?: Array<{
+					title?: string
+					content?: string
+					severity?: RiskLevel
+					risk_level?: RiskLevel
+					action?: string
+				}>
+			}>
 		}) =>
 			createWork({
 				title,
@@ -89,12 +99,7 @@ export const createWorkMutationOptions = () =>
 				group_id,
 				work_date,
 				status,
-			}).then(async (work) => {
-				if (items.length > 0) {
-					await Promise.all(items.map((item) => addWorkItem(work.id, item)))
-				}
-
-				return work
+				items,
 			}),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.all() })

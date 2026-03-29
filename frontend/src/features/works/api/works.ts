@@ -1,5 +1,6 @@
 import type {
   RiskAssessment,
+  RiskLevel,
   Work,
   WorkDateSummary,
   WorkGroup,
@@ -54,6 +55,17 @@ export const createWork = (payload: {
   group_id: number
   work_date: string
   status: WorkStatus
+  items?: Array<{
+    name: string
+    description: string
+    risks?: Array<{
+      title?: string
+      content?: string
+      severity?: RiskLevel
+      risk_level?: RiskLevel
+      action?: string
+    }>
+  }>
 }) => {
   const parsedPayload = createWorkPayloadSchema.parse(payload)
 

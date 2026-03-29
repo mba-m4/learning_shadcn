@@ -38,9 +38,13 @@ interface WorkOverviewItem {
 }
 
 const chartConfig = {
-  count: {
-    label: '件数',
-    color: 'hsl(var(--chart-1))',
+  incidents: {
+    label: 'インシデント',
+    color: '#f97316',
+  },
+  nearMisses: {
+    label: 'ヒヤリハット',
+    color: '#0ea5e9',
   },
 } satisfies ChartConfig
 
@@ -205,10 +209,10 @@ export function DashboardNotificationsPanel({
   )
 }
 
-export function DashboardRiskTrendSection({
-  riskTrendData,
+export function DashboardIncidentTrendSection({
+  incidentTrendData,
 }: {
-  riskTrendData: Array<{ date: string; count: number }>
+  incidentTrendData: Array<{ date: string; incidents: number; nearMisses: number }>
 }) {
   return (
     <div className="animate-in rounded-xl border border-border bg-card p-6 shadow-sm">
@@ -217,16 +221,17 @@ export function DashboardRiskTrendSection({
           <TrendingUp className="h-5 w-5 text-chart-1" />
         </div>
         <div>
-          <h3 className="text-lg font-bold">リスク優先度分布</h3>
-          <p className="text-xs text-muted-foreground">台帳に登録されたリスクの severity 集計</p>
+          <h3 className="text-lg font-bold">直近の事象発生件数</h3>
+          <p className="text-xs text-muted-foreground">日付ごとのインシデントとヒヤリハットの件数</p>
         </div>
       </div>
       <ChartContainer config={chartConfig} className="h-64 w-full">
-        <BarChart data={riskTrendData} accessibilityLayer>
+        <BarChart data={incidentTrendData} accessibilityLayer>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
           <XAxis dataKey="date" tickLine={false} tickMargin={10} axisLine={false} style={{ fontSize: '12px' }} />
           <ChartTooltip content={<ChartTooltipContent />} />
-          <Bar dataKey="count" fill="var(--color-count)" radius={[12, 12, 0, 0]} />
+          <Bar dataKey="incidents" stackId="events" fill="var(--color-incidents)" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="nearMisses" stackId="events" fill="var(--color-nearMisses)" radius={[8, 8, 0, 0]} />
         </BarChart>
       </ChartContainer>
     </div>

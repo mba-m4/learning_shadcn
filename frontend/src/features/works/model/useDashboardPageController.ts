@@ -8,7 +8,35 @@ import {
   createWorkDailyOverviewQueryOptions,
 } from '@/features/works/api/queries'
 
-const selectRecentIncidents = <T extends { id: number }>(incidents: T[]) => incidents.slice(0, 5)
+const selectRecentIncidents = <T extends { id: number; date: string; created_at?: string }>(incidents: T[]) => {
+  return [...incidents]
+    .sort((left, right) => {
+      const leftTime = new Date(left.date || left.created_at || 0).getTime()
+      const rightTime = new Date(right.date || right.created_at || 0).getTime()
+      return rightTime - leftTime
+    })
+    .slice(0, 5)
+}
+
+const selectIncidentTrendData = <T extends { date: string; type: 'incident' | 'near_miss' }>(incidents: T[]) => {
+  const grouped = incidents.reduce<Record<string, { incident: number; near_miss: number }>>((accumulator, incident) => {
+    const date = incident.date
+    if (!accumulator[date]) {
+      accumulator[date] = { incident: 0, near_miss: 0 }
+    }
+    accumulator[date][incident.type] += 1
+    return accumulator
+  }, {})
+
+  return Object.entries(grouped)
+    .sort(([leftDate], [rightDate]) => leftDate.localeCompare(rightDate))
+    .slice(-7)
+    .map(([date, counts]) => ({
+      date: date.slice(5),
+      incidents: counts.incident,
+      nearMisses: counts.near_miss,
+    }))
+}
 
 const selectRiskTrendData = (risks: Array<{ severity: 'high' | 'medium' | 'low' }>) => {
   const counts = risks.reduce<Record<'high' | 'medium' | 'low', number>>(
@@ -59,11 +87,7 @@ export function useDashboardPageController() {
   const date = new Date().toISOString().slice(0, 10)
 
   const dailyOverviewQuery = useQuery(createWorkDailyOverviewQueryOptions(date))
-  const incidentsQuery = useQuery(
-    createIncidentsQueryOptions({
-      select: selectRecentIncidents,
-    }),
-  )
+  const incidentsQuery = useQuery(createIncidentsQueryOptions())
   const notificationsQuery = useQuery(
     createNotificationsQueryOptions(
       { limit: 20 },
@@ -79,7 +103,9 @@ export function useDashboardPageController() {
   )
 
   const dailyOverview = dailyOverviewQuery.data ?? []
-  const recentIncidents = incidentsQuery.data ?? []
+  const incidents = incidentsQuery.data ?? []
+  const recentIncidents = selectRecentIncidents(incidents)
+  const incidentTrendData = selectIncidentTrendData(incidents)
   const activeNotifications = notificationsQuery.data ?? []
   const riskView = risksQuery.data ?? { riskCount: 0, riskTrendData: [] }
 
@@ -108,6 +134,7 @@ export function useDashboardPageController() {
       Boolean(notificationsQuery.error) ||
       Boolean(risksQuery.error),
     navigate,
+    incidentTrendData,
     recentIncidents,
     riskView,
     todayWorks: dailyOverview.slice(0, 5),

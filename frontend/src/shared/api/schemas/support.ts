@@ -14,7 +14,10 @@ export const workCommentsSchema = z.array(workCommentSchema)
 export const manualRiskSchema = z.object({
   id: z.number().int(),
   work_item_id: z.number().int(),
+  title: z.string().nullable().optional(),
   content: z.string(),
+  severity: riskLevelSchema.nullable().optional(),
+  risk_level: riskLevelSchema.nullable().optional(),
   action: z.string().nullable().optional(),
   created_at: z.string(),
 })

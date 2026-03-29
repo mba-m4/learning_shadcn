@@ -798,7 +798,19 @@ export const handlers = [
   }),
 
   http.post('*/works', async ({ request }) => {
-    const body = (await request.json()) as Partial<Work>
+    const body = (await request.json()) as Partial<Work> & {
+      items?: Array<{
+        name?: string
+        description?: string
+        risks?: Array<{
+          title?: string
+          content?: string
+          severity?: 'low' | 'medium' | 'high'
+          risk_level?: 'low' | 'medium' | 'high'
+          action?: string
+        }>
+      }>
+    }
     const newWork = mockDb.work.create({
       id: mockDb.work.getAll().reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1,
       title: body.title || '',
@@ -807,6 +819,33 @@ export const handlers = [
       work_date: body.work_date || new Date().toISOString().split('T')[0],
       status: body.status || 'draft',
     })
+
+    body.items?.forEach((item) => {
+      const newItem = mockDb.workItem.create({
+        id: mockDb.workItem.getAll().reduce((maxId, entry) => Math.max(maxId, entry.id), 0) + 1,
+        work_id: newWork.id,
+        name: item.name || '',
+        description: item.description || '',
+      })
+
+      item.risks?.forEach((risk) => {
+        if (!(risk.title || risk.content || risk.severity || risk.risk_level || risk.action)) {
+          return
+        }
+
+        mockDb.manualRisk.create({
+          id: mockDb.manualRisk.getAll().reduce((maxId, entry) => Math.max(maxId, entry.id), 0) + 1,
+          work_item_id: newItem.id,
+          title: risk.title || '',
+          content: risk.content || risk.title || '',
+          severity: risk.severity || '',
+          risk_level: risk.risk_level || '',
+          action: risk.action || '',
+          created_at: new Date().toISOString(),
+        })
+      })
+    })
+
     return HttpResponse.json(newWork, { status: 201 })
   }),
 
@@ -854,11 +893,20 @@ export const handlers = [
   }),
 
   http.post('*/works/items/:itemId/risks/manual', async ({ request, params }) => {
-    const body = (await request.json()) as { content: string; action?: string | null }
+    const body = (await request.json()) as {
+      title?: string | null
+      content: string
+      severity?: 'low' | 'medium' | 'high' | null
+      risk_level?: 'low' | 'medium' | 'high' | null
+      action?: string | null
+    }
     const newRisk = mockDb.manualRisk.create({
       id: mockDb.manualRisk.getAll().reduce((maxId, risk) => Math.max(maxId, risk.id), 0) + 1,
       work_item_id: Number(params.itemId),
+      title: body.title ?? '',
       content: body.content,
+      severity: body.severity ?? '',
+      risk_level: body.risk_level ?? '',
       action: body.action ?? '',
       created_at: new Date().toISOString(),
     })
@@ -866,16 +914,34 @@ export const handlers = [
     if (workItem) {
       mockRiskChangeAtByWorkId[workItem.work_id] = new Date().toISOString()
     }
-    return HttpResponse.json({ ...newRisk, action: newRisk.action || null }, { status: 201 })
+    return HttpResponse.json(
+      {
+        ...newRisk,
+        title: newRisk.title || null,
+        severity: newRisk.severity || null,
+        risk_level: newRisk.risk_level || null,
+        action: newRisk.action || null,
+      },
+      { status: 201 },
+    )
   }),
 
   http.patch('*/works/items/risks/manual/:riskId', async ({ request, params }) => {
-    const body = (await request.json()) as { content?: string | null; action?: string | null }
+    const body = (await request.json()) as {
+      title?: string | null
+      content?: string | null
+      severity?: 'low' | 'medium' | 'high' | null
+      risk_level?: 'low' | 'medium' | 'high' | null
+      action?: string | null
+    }
     const riskId = Number(params.riskId)
     const risk = mockDb.manualRisk.update({
       where: { id: { equals: riskId } },
       data: {
+        ...(body.title !== undefined ? { title: body.title ?? '' } : {}),
         ...(body.content !== undefined ? { content: body.content ?? '' } : {}),
+        ...(body.severity !== undefined ? { severity: body.severity ?? '' } : {}),
+        ...(body.risk_level !== undefined ? { risk_level: body.risk_level ?? '' } : {}),
         ...(body.action !== undefined ? { action: body.action ?? '' } : {}),
       },
     })
@@ -886,7 +952,16 @@ export const handlers = [
     if (workItem) {
       mockRiskChangeAtByWorkId[workItem.work_id] = new Date().toISOString()
     }
-    return HttpResponse.json({ ...risk, action: risk.action || null }, { status: 200 })
+    return HttpResponse.json(
+      {
+        ...risk,
+        title: risk.title || null,
+        severity: risk.severity || null,
+        risk_level: risk.risk_level || null,
+        action: risk.action || null,
+      },
+      { status: 200 },
+    )
   }),
 
   http.delete('*/works/items/risks/manual/:riskId', ({ params }) => {
@@ -908,7 +983,10 @@ export const handlers = [
     const assessment = mockDb.aiRisk.create({
       id: mockDb.aiRisk.getAll().reduce((maxId, risk) => Math.max(maxId, risk.id), 99) + 1,
       work_item_id: Number(params.itemId),
+      title: '',
       content: 'AI-generated risk assessment',
+      severity: '',
+      risk_level: '',
       action: '',
       generated_at: new Date().toISOString(),
     })
@@ -916,16 +994,34 @@ export const handlers = [
     if (workItem) {
       mockRiskChangeAtByWorkId[workItem.work_id] = new Date().toISOString()
     }
-    return HttpResponse.json({ ...assessment, action: assessment.action || null }, { status: 201 })
+    return HttpResponse.json(
+      {
+        ...assessment,
+        title: assessment.title || null,
+        severity: assessment.severity || null,
+        risk_level: assessment.risk_level || null,
+        action: assessment.action || null,
+      },
+      { status: 201 },
+    )
   }),
 
   http.patch('*/works/items/risks/ai/:riskId', async ({ request, params }) => {
-    const body = (await request.json()) as { content?: string | null; action?: string | null }
+    const body = (await request.json()) as {
+      title?: string | null
+      content?: string | null
+      severity?: 'low' | 'medium' | 'high' | null
+      risk_level?: 'low' | 'medium' | 'high' | null
+      action?: string | null
+    }
     const riskId = Number(params.riskId)
     const risk = mockDb.aiRisk.update({
       where: { id: { equals: riskId } },
       data: {
+        ...(body.title !== undefined ? { title: body.title ?? '' } : {}),
         ...(body.content !== undefined ? { content: body.content ?? '' } : {}),
+        ...(body.severity !== undefined ? { severity: body.severity ?? '' } : {}),
+        ...(body.risk_level !== undefined ? { risk_level: body.risk_level ?? '' } : {}),
         ...(body.action !== undefined ? { action: body.action ?? '' } : {}),
       },
     })
@@ -936,7 +1032,16 @@ export const handlers = [
     if (workItem) {
       mockRiskChangeAtByWorkId[workItem.work_id] = new Date().toISOString()
     }
-    return HttpResponse.json({ ...risk, action: risk.action || null }, { status: 200 })
+    return HttpResponse.json(
+      {
+        ...risk,
+        title: risk.title || null,
+        severity: risk.severity || null,
+        risk_level: risk.risk_level || null,
+        action: risk.action || null,
+      },
+      { status: 200 },
+    )
   }),
 
   http.delete('*/works/items/risks/ai/:riskId', ({ params }) => {

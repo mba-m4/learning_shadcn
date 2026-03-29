@@ -20,7 +20,10 @@ export const workItemSchema = z.object({
 export const riskAssessmentSchema = z.object({
   id: z.number().int(),
   work_item_id: z.number().int(),
+  title: z.string().nullable().optional(),
   content: z.string(),
+  severity: riskLevelSchema.nullable().optional(),
+  risk_level: riskLevelSchema.nullable().optional(),
   action: z.string().nullable().optional(),
   generated_at: z.string(),
 })
@@ -94,17 +97,33 @@ export const workSceneAssetSchema = z.object({
   annotations: z.array(workSceneAnnotationSchema),
 })
 
+export const createWorkRiskPayloadSchema = z.object({
+  title: z.string().min(1).optional(),
+  content: z.string().min(1).optional(),
+  severity: riskLevelSchema.optional(),
+  risk_level: riskLevelSchema.optional(),
+  action: z.string().min(1).optional(),
+})
+
 export const createWorkPayloadSchema = z.object({
   title: z.string().min(1),
   description: z.string(),
   group_id: z.number().int(),
   work_date: z.string(),
   status: workStatusSchema,
+  items: z.array(
+    z.object({
+      name: z.string().min(1),
+      description: z.string(),
+      risks: z.array(createWorkRiskPayloadSchema).optional(),
+    }),
+  ).optional(),
 })
 
 export const createWorkItemPayloadSchema = z.object({
   name: z.string().min(1),
   description: z.string(),
+  risks: z.array(createWorkRiskPayloadSchema).optional(),
 })
 
 export const workListParamsSchema = z.object({

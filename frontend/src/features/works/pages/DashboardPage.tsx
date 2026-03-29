@@ -2,9 +2,9 @@ import PageHeader from '@/components/layout/PageHeader'
 import { useDashboardPageController } from '@/features/works/model/useDashboardPageController'
 import {
   DashboardHeroStats,
+  DashboardIncidentTrendSection,
   DashboardNotificationsPanel,
   DashboardRecentIncidentsSection,
-  DashboardRiskTrendSection,
   DashboardTodayWorksSection,
 } from '@/features/works/ui/DashboardSections'
 
@@ -39,7 +39,7 @@ export default function DashboardPage() {
           onOpenDetail={(notificationId) => controller.navigate(`/notifications/${notificationId}`)}
         />
 
-        <DashboardRiskTrendSection riskTrendData={controller.riskView.riskTrendData} />
+        <DashboardIncidentTrendSection incidentTrendData={controller.incidentTrendData} />
 
         <DashboardTodayWorksSection
           works={controller.todayWorks}

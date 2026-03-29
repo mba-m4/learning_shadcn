@@ -19,6 +19,21 @@ import {
   createWorkGroupsQueryOptions,
   createWorkMutationOptions,
 } from '@/features/works/api/queries'
+import type { RiskLevel } from '@/types/api'
+
+interface WorkRiskDraft {
+  title: string
+  content: string
+  severity: '' | RiskLevel
+  risk_level: '' | RiskLevel
+  action: string
+}
+
+interface WorkStepDraft {
+  name: string
+  description: string
+  risks: WorkRiskDraft[]
+}
 
 interface WorkDraft {
   title: string
@@ -26,8 +41,29 @@ interface WorkDraft {
   group_id: number | null
   work_date: string
   status: 'draft' | 'confirmed'
-  items: Array<{ name: string; description: string }>
+  items: WorkStepDraft[]
 }
+
+const emptySelectValue = '__none__'
+const riskLevelOptions: Array<{ value: RiskLevel; label: string }> = [
+  { value: 'low', label: '低' },
+  { value: 'medium', label: '中' },
+  { value: 'high', label: '高' },
+]
+
+const createEmptyRiskDraft = (): WorkRiskDraft => ({
+  title: '',
+  content: '',
+  severity: '',
+  risk_level: '',
+  action: '',
+})
+
+const createEmptyStepDraft = (): WorkStepDraft => ({
+  name: '',
+  description: '',
+  risks: [],
+})
 
 const getToday = () => new Date().toISOString().slice(0, 10)
 
@@ -43,8 +79,7 @@ const createDefaultDraft = (): WorkDraft => ({
 export default function WorkCreatePage() {
   const navigate = useNavigate()
   const [draft, setDraft] = useState<WorkDraft>(createDefaultDraft)
-  const [itemName, setItemName] = useState('')
-  const [itemDescription, setItemDescription] = useState('')
+  const [stepDraft, setStepDraft] = useState<WorkStepDraft>(createEmptyStepDraft)
   const groupsQuery = useQuery(createWorkGroupsQueryOptions())
   const createWorkMutation = useMutation(createWorkMutationOptions())
 
@@ -54,10 +89,10 @@ export default function WorkCreatePage() {
     setDraft((state) => ({ ...state, [key]: value }))
   }
 
-  const addDraftItem = (name: string, description: string) => {
+  const addDraftItem = (item: WorkStepDraft) => {
     setDraft((state) => ({
       ...state,
-      items: [...state.items, { name, description }],
+      items: [...state.items, item],
     }))
   }
 
@@ -70,23 +105,72 @@ export default function WorkCreatePage() {
 
   const resetDraft = () => {
     setDraft(createDefaultDraft())
-    setItemName('')
-    setItemDescription('')
+    setStepDraft(createEmptyStepDraft())
+  }
+
+  const setStepField = <K extends keyof WorkStepDraft>(key: K, value: WorkStepDraft[K]) => {
+    setStepDraft((state) => ({ ...state, [key]: value }))
+  }
+
+  const addRiskDraft = () => {
+    setStepDraft((state) => ({
+      ...state,
+      risks: [...state.risks, createEmptyRiskDraft()],
+    }))
+  }
+
+  const updateRiskDraft = <K extends keyof WorkRiskDraft>(
+    index: number,
+    key: K,
+    value: WorkRiskDraft[K],
+  ) => {
+    setStepDraft((state) => ({
+      ...state,
+      risks: state.risks.map((risk, riskIndex) =>
+        riskIndex === index ? { ...risk, [key]: value } : risk,
+      ),
+    }))
+  }
+
+  const removeRiskDraft = (index: number) => {
+    setStepDraft((state) => ({
+      ...state,
+      risks: state.risks.filter((_, riskIndex) => riskIndex !== index),
+    }))
   }
 
   const handleAddItem = () => {
-    if (!itemName.trim() || !itemDescription.trim()) {
+    if (!stepDraft.name.trim()) {
+      toast.error('作業手順名を入力してください。')
       return
     }
-    addDraftItem(itemName.trim(), itemDescription.trim())
-    setItemName('')
-    setItemDescription('')
+
+    const risks = stepDraft.risks
+      .map((risk) => ({
+        title: risk.title.trim(),
+        content: risk.content.trim(),
+        severity: risk.severity,
+        risk_level: risk.risk_level,
+        action: risk.action.trim(),
+      }))
+      .filter((risk) =>
+        Boolean(
+          risk.title || risk.content || risk.severity || risk.risk_level || risk.action,
+        ),
+      )
+
+    addDraftItem({
+      name: stepDraft.name.trim(),
+      description: stepDraft.description.trim(),
+      risks,
+    })
+    setStepDraft(createEmptyStepDraft())
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!draft.title.trim() || !draft.description.trim()) {
-      toast.error('タイトルと説明を入力してください。')
+    if (!draft.title.trim()) {
+      toast.error('作業名を入力してください。')
       return
     }
     if (!draft.group_id) {
@@ -101,7 +185,19 @@ export default function WorkCreatePage() {
         group_id: draft.group_id,
         work_date: draft.work_date,
         status: draft.status,
-        items: draft.items,
+        items: draft.items.map((item) => ({
+          name: item.name,
+          description: item.description,
+          risks: item.risks.map((risk) => ({
+            ...(risk.title.trim() ? { title: risk.title.trim() } : {}),
+            ...((risk.content.trim() || risk.title.trim())
+              ? { content: risk.content.trim() || risk.title.trim() }
+              : {}),
+            ...(risk.severity ? { severity: risk.severity } : {}),
+            ...(risk.risk_level ? { risk_level: risk.risk_level } : {}),
+            ...(risk.action.trim() ? { action: risk.action.trim() } : {}),
+          })),
+        })),
       })
 
       toast.success('作業を作成しました。')
@@ -116,11 +212,11 @@ export default function WorkCreatePage() {
     <div className="space-y-6">
       <PageHeader
         title="作業作成"
-        subtitle="作業の基本情報と作業項目を登録します。"
+        subtitle="作業情報、手順、必要なリスクアセスメントをまとめて登録します。"
         actions={
           <div className="flex items-center gap-2">
             <span className="holo-tag">Draft</span>
-            <span className="holo-tag">{draft.items.length} items</span>
+            <span className="holo-tag">{draft.items.length} 手順</span>
           </div>
         }
       />
@@ -134,14 +230,14 @@ export default function WorkCreatePage() {
                 </p>
                 <h2 className="mt-2 text-xl font-semibold">作業情報</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  リスク評価に必要な基礎情報を登録します。
+                  作業名、作業詳細、担当グループを登録します。
                 </p>
               </div>
               <span className="holo-tag">New</span>
             </div>
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label htmlFor="title">タイトル</Label>
+                <Label htmlFor="title">作業名</Label>
                 <Input
                   id="title"
                   value={draft.title}
@@ -150,7 +246,7 @@ export default function WorkCreatePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">説明</Label>
+                <Label htmlFor="description">作業詳細</Label>
                 <Textarea
                   id="description"
                   value={draft.description}
@@ -188,7 +284,7 @@ export default function WorkCreatePage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>作業グループ</Label>
+                  <Label>担当グループ</Label>
                   <Select
                     value={draft.group_id ? String(draft.group_id) : ''}
                     onValueChange={(value) =>
@@ -219,41 +315,155 @@ export default function WorkCreatePage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground">
-                  Checklist
+                  Procedure
                 </p>
-                <h2 className="mt-2 text-xl font-semibold">作業項目</h2>
+                <h2 className="mt-2 text-xl font-semibold">手順</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  作業前に確認する項目を追加します。
+                  作業手順ごとに必要ならリスクアセスメントを追加できます。
                 </p>
               </div>
-              <span className="holo-tag">{draft.items.length} items</span>
+              <span className="holo-tag">{draft.items.length} 手順</span>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="item-name">項目名</Label>
+                <Label htmlFor="item-name">作業手順名</Label>
                 <Input
                   id="item-name"
-                  value={itemName}
-                  onChange={(event) => setItemName(event.target.value)}
+                  value={stepDraft.name}
+                  onChange={(event) => setStepField('name', event.target.value)}
                   placeholder="バルブ確認"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="item-description">項目説明</Label>
+                <Label htmlFor="item-description">作業詳細</Label>
                 <Input
                   id="item-description"
-                  value={itemDescription}
-                  onChange={(event) => setItemDescription(event.target.value)}
+                  value={stepDraft.description}
+                  onChange={(event) => setStepField('description', event.target.value)}
                   placeholder="締結状態の確認"
                 />
               </div>
             </div>
+            <div className="space-y-3 rounded-xl border border-border/60 bg-background/80 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">リスクアセスメント</p>
+                  <p className="text-xs text-muted-foreground">
+                    必要な場合だけ追加してください。
+                  </p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={addRiskDraft}>
+                  リスクを追加
+                </Button>
+              </div>
+              {stepDraft.risks.length === 0 ? (
+                <div className="holo-panel-soft px-4 py-4 text-sm text-muted-foreground">
+                  リスクアセスメントはまだ追加されていません。
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {stepDraft.risks.map((risk, index) => (
+                    <div key={`step-risk-${index}`} className="rounded-xl border border-border/60 p-4">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor={`risk-title-${index}`}>リスク名</Label>
+                          <Input
+                            id={`risk-title-${index}`}
+                            value={risk.title}
+                            onChange={(event) => updateRiskDraft(index, 'title', event.target.value)}
+                            placeholder="高所からの落下"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`risk-content-${index}`}>リスク詳細</Label>
+                          <Input
+                            id={`risk-content-${index}`}
+                            value={risk.content}
+                            onChange={(event) => updateRiskDraft(index, 'content', event.target.value)}
+                            placeholder="足場端部での作業が発生"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>重要度</Label>
+                          <Select
+                            value={risk.severity || emptySelectValue}
+                            onValueChange={(value) =>
+                              updateRiskDraft(
+                                index,
+                                'severity',
+                                value === emptySelectValue ? '' : (value as RiskLevel),
+                              )
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="未設定" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={emptySelectValue}>未設定</SelectItem>
+                              {riskLevelOptions.map((option) => (
+                                <SelectItem key={`severity-${option.value}`} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>リスク度</Label>
+                          <Select
+                            value={risk.risk_level || emptySelectValue}
+                            onValueChange={(value) =>
+                              updateRiskDraft(
+                                index,
+                                'risk_level',
+                                value === emptySelectValue ? '' : (value as RiskLevel),
+                              )
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="未設定" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={emptySelectValue}>未設定</SelectItem>
+                              {riskLevelOptions.map((option) => (
+                                <SelectItem key={`risk-level-${option.value}`} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        <Label htmlFor={`risk-action-${index}`}>リスク対応</Label>
+                        <Textarea
+                          id={`risk-action-${index}`}
+                          value={risk.action}
+                          onChange={(event) => updateRiskDraft(index, 'action', event.target.value)}
+                          placeholder="安全帯を装着し、監視員を配置する"
+                        />
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeRiskDraft(index)}
+                        >
+                          削除
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <Button type="button" variant="outline" onClick={handleAddItem}>
-              項目を追加
+              手順を追加
             </Button>
             {draft.items.length === 0 ? (
               <div className="holo-panel-soft px-4 py-4 text-sm text-muted-foreground">
-                作業項目はまだ追加されていません。
+                手順はまだ追加されていません。
               </div>
             ) : (
               <div className="space-y-2">
@@ -264,9 +474,29 @@ export default function WorkCreatePage() {
                   >
                     <div>
                       <p className="text-sm font-medium">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.description}
-                      </p>
+                      {item.description ? (
+                        <p className="text-xs text-muted-foreground">
+                          {item.description}
+                        </p>
+                      ) : null}
+                      <div className="mt-2 space-y-1">
+                        {item.risks.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            リスクアセスメントなし
+                          </p>
+                        ) : (
+                          item.risks.map((risk, riskIndex) => (
+                            <div key={`${item.name}-risk-${riskIndex}`} className="text-xs text-muted-foreground">
+                              <span className="font-medium text-foreground">
+                                {risk.title || `リスク ${riskIndex + 1}`}
+                              </span>
+                              {risk.content ? ` / ${risk.content}` : ''}
+                              {risk.severity ? ` / 重要度:${risk.severity}` : ''}
+                              {risk.risk_level ? ` / リスク度:${risk.risk_level}` : ''}
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                     <Button
                       type="button"

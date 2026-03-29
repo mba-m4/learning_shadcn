@@ -24,7 +24,10 @@ export interface WorkItem {
 export interface RiskAssessment {
   id: number
   work_item_id: number
+  title?: string | null
   content: string
+  severity?: RiskLevel | null
+  risk_level?: RiskLevel | null
   action?: string | null
   generated_at: string
 }
@@ -32,7 +35,10 @@ export interface RiskAssessment {
 export interface ManualRisk {
   id: number
   work_item_id: number
+  title?: string | null
   content: string
+  severity?: RiskLevel | null
+  risk_level?: RiskLevel | null
   action?: string | null
   created_at: string
 }
