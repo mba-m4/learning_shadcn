@@ -1,92 +1,29 @@
 import { http, HttpResponse } from "msw"
-import { documentMockPaths } from "@/api/paths"
+import { documentMockPaths, projectMockPaths } from "@/api/paths"
+import {
+  createDocumentRecord,
+  deleteDocumentRecord,
+  findDocumentById,
+  findProjectById,
+  listDocuments,
+  listProjects,
+  updateDocumentRecord,
+} from "@/mocks/appDb"
 import { documentInputSchema } from "@/schema/documents"
-import type {
-  Document,
-  DocumentInput,
-  FetchDocumentsParams,
-} from "@/types/documents"
-
-let mockDocuments: Document[] = [
-  {
-    id: "1",
-    title: "運用手順テンプレート",
-    description: "毎朝の監視確認で見るポイントをまとめたサンプルです。",
-    createdAt: new Date("2026-03-10T09:00:00.000Z"),
-  },
-  {
-    id: "2",
-    title: "オンボーディングガイド",
-    description: "新しく参加したメンバー向けの手順書です。",
-    createdAt: new Date("2026-03-12T11:30:00.000Z"),
-  },
-  {
-    id: "3",
-    title: "障害対応メモ",
-    description: "一次切り分けとエスカレーション条件のテンプレートです。",
-    createdAt: new Date("2026-03-15T08:15:00.000Z"),
-  },
-]
-
-const sortDocuments = (
-  documents: Document[],
-  sort: FetchDocumentsParams["sort"] = "newest"
-) => {
-  const nextDocuments = [...documents]
-
-  if (sort === "title") {
-    return nextDocuments.sort((left, right) =>
-      left.title.localeCompare(right.title, "ja")
-    )
-  }
-
-  return nextDocuments.sort((left, right) => {
-    const delta = left.createdAt.getTime() - right.createdAt.getTime()
-    return sort === "oldest" ? delta : -delta
-  })
-}
-
-const filterDocuments = (documents: Document[], keyword: string | null) => {
-  if (!keyword) {
-    return documents
-  }
-
-  const normalizedKeyword = keyword.trim().toLowerCase()
-
-  if (!normalizedKeyword) {
-    return documents
-  }
-
-  return documents.filter((document) => {
-    const title = document.title.toLowerCase()
-    const description = document.description.toLowerCase()
-
-    return (
-      title.includes(normalizedKeyword) ||
-      description.includes(normalizedKeyword)
-    )
-  })
-}
-
-const buildDocument = (payload: DocumentInput): Document => ({
-  id: String(Date.now()),
-  createdAt: new Date(),
-  ...payload,
-})
+import type { FetchDocumentsParams } from "@/types/documents"
 
 export const handlers = [
   http.get(documentMockPaths.list, ({ request }) => {
     const url = new URL(request.url)
     const keyword = url.searchParams.get("keyword")
+    const projectId = url.searchParams.get("projectId") ?? undefined
     const sort = (url.searchParams.get("sort") ??
       "newest") as FetchDocumentsParams["sort"]
 
-    return HttpResponse.json(
-      sortDocuments(filterDocuments(mockDocuments, keyword), sort)
-    )
+    return HttpResponse.json(listDocuments({ keyword, projectId, sort }))
   }),
   http.get(documentMockPaths.detail, ({ params }) => {
-    const document = mockDocuments.find((item) => item.id === params.id)
+    const document = findDocumentById(String(params.id))
 
     if (!document) {
       return HttpResponse.json(
@@ -108,17 +45,24 @@ export const handlers = [
       )
     }
 
-    const nextDocument = buildDocument(parsed.data)
-    mockDocuments = [nextDocument, ...mockDocuments]
+    const nextDocument = createDocumentRecord(parsed.data)
+
+    if (!nextDocument) {
+      return HttpResponse.json(
+        { message: "Project not found" },
+        { status: 400 }
+      )
+    }
 
     return HttpResponse.json(nextDocument, { status: 201 })
   }),
   http.put(documentMockPaths.detail, async ({ params, request }) => {
     const body = await request.json()
     const parsed = documentInputSchema.safeParse(body)
-    const targetIndex = mockDocuments.findIndex((item) => item.id === params.id)
+    const documentId = String(params.id)
+    const currentDocument = findDocumentById(documentId)
 
-    if (targetIndex < 0) {
+    if (!currentDocument) {
       return HttpResponse.json(
         { message: "Document not found" },
         { status: 404 }
@@ -132,20 +76,19 @@ export const handlers = [
       )
     }
 
-    const currentDocument = mockDocuments[targetIndex]
-    const updatedDocument: Document = {
-      ...currentDocument,
-      ...parsed.data,
-    }
+    const updatedDocument = updateDocumentRecord(documentId, parsed.data)
 
-    mockDocuments = mockDocuments.map((item) =>
-      item.id === updatedDocument.id ? updatedDocument : item
-    )
+    if (!updatedDocument) {
+      return HttpResponse.json(
+        { message: "Project not found" },
+        { status: 400 }
+      )
+    }
 
     return HttpResponse.json(updatedDocument)
   }),
   http.delete(documentMockPaths.detail, ({ params }) => {
-    const target = mockDocuments.find((item) => item.id === params.id)
+    const target = deleteDocumentRecord(String(params.id))
 
     if (!target) {
       return HttpResponse.json(
@@ -154,8 +97,19 @@ export const handlers = [
       )
     }
 
-    mockDocuments = mockDocuments.filter((item) => item.id !== params.id)
-
     return HttpResponse.json({ id: target.id })
+  }),
+  http.get(projectMockPaths.list, () => HttpResponse.json(listProjects())),
+  http.get(projectMockPaths.detail, ({ params }) => {
+    const project = findProjectById(String(params.id))
+
+    if (!project) {
+      return HttpResponse.json(
+        { message: "Project not found" },
+        { status: 404 }
+      )
+    }
+
+    return HttpResponse.json(project)
   }),
 ]

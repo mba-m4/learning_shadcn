@@ -10,6 +10,8 @@ import { DocumentCreatePage } from "@/pages/documents/DocumentCreatePage"
 import { DocumentDetailPage } from "@/pages/documents/DocumentDetailPage"
 import { DocumentEditPage } from "@/pages/documents/DocumentEditPage"
 import { DocumentsPage } from "@/pages/documents/DocumentsPage"
+import { ProjectDetailPage } from "@/pages/projects/ProjectDetailPage"
+import { ProjectsPage } from "@/pages/projects/ProjectsPage"
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
@@ -20,6 +22,10 @@ export const router = createBrowserRouter(
         <Route path="new" element={<DocumentCreatePage />} />
         <Route path=":id" element={<DocumentDetailPage />} />
         <Route path=":id/edit" element={<DocumentEditPage />} />
+      </Route>
+      <Route path="projects">
+        <Route index element={<ProjectsPage />} />
+        <Route path=":id" element={<ProjectDetailPage />} />
       </Route>
     </Route>
   )

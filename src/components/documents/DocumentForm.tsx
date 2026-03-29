@@ -21,12 +21,20 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { documentInputSchema } from "@/schema/documents"
-import type { DocumentInput } from "@/types/documents"
+import {
+  documentCategoryOptions,
+  documentStatusOptions,
+  type DocumentInput,
+} from "@/types/documents"
 
 type DocumentFormProps = {
   title: string
   description: string
   initialValues: DocumentInput
+  projectOptions: Array<{
+    value: string
+    label: string
+  }>
   submitLabel: string
   cancelTo: string
   errorMessage?: string | null
@@ -37,6 +45,7 @@ export function DocumentForm({
   title,
   description,
   initialValues,
+  projectOptions,
   submitLabel,
   cancelTo,
   errorMessage,
@@ -94,6 +103,123 @@ export function DocumentForm({
                     />
                     <FieldDescription>
                       一覧や詳細で識別しやすい短いタイトルを入力します。
+                    </FieldDescription>
+                    {isInvalid ? (
+                      <FieldError errors={field.state.meta.errors} />
+                    ) : null}
+                  </Field>
+                )
+              }}
+            />
+
+            <form.Field
+              name="projectId"
+              children={(field) => {
+                const isInvalid =
+                  field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field data-invalid={isInvalid || undefined}>
+                    <FieldLabel htmlFor={field.name}>プロジェクト</FieldLabel>
+                    <select
+                      aria-invalid={isInvalid}
+                      className="h-11 rounded-md border border-input bg-background px-3 text-sm transition outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
+                      id={field.name}
+                      name={field.name}
+                      onBlur={field.handleBlur}
+                      onChange={(event) =>
+                        field.handleChange(
+                          event.target.value as DocumentInput["projectId"]
+                        )
+                      }
+                      value={field.state.value}
+                    >
+                      {projectOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <FieldDescription>
+                      このドキュメントが属する project を選択します。
+                    </FieldDescription>
+                    {isInvalid ? (
+                      <FieldError errors={field.state.meta.errors} />
+                    ) : null}
+                  </Field>
+                )
+              }}
+            />
+
+            <form.Field
+              name="category"
+              children={(field) => {
+                const isInvalid =
+                  field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field data-invalid={isInvalid || undefined}>
+                    <FieldLabel htmlFor={field.name}>カテゴリ</FieldLabel>
+                    <select
+                      aria-invalid={isInvalid}
+                      className="h-11 rounded-md border border-input bg-background px-3 text-sm transition outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
+                      id={field.name}
+                      name={field.name}
+                      onBlur={field.handleBlur}
+                      onChange={(event) =>
+                        field.handleChange(
+                          event.target.value as DocumentInput["category"]
+                        )
+                      }
+                      value={field.state.value}
+                    >
+                      {documentCategoryOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <FieldDescription>
+                      runbook、incident など、一覧で見分けやすい分類を選びます。
+                    </FieldDescription>
+                    {isInvalid ? (
+                      <FieldError errors={field.state.meta.errors} />
+                    ) : null}
+                  </Field>
+                )
+              }}
+            />
+
+            <form.Field
+              name="status"
+              children={(field) => {
+                const isInvalid =
+                  field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field data-invalid={isInvalid || undefined}>
+                    <FieldLabel htmlFor={field.name}>ステータス</FieldLabel>
+                    <select
+                      aria-invalid={isInvalid}
+                      className="h-11 rounded-md border border-input bg-background px-3 text-sm transition outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
+                      id={field.name}
+                      name={field.name}
+                      onBlur={field.handleBlur}
+                      onChange={(event) =>
+                        field.handleChange(
+                          event.target.value as DocumentInput["status"]
+                        )
+                      }
+                      value={field.state.value}
+                    >
+                      {documentStatusOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <FieldDescription>
+                      下書き、レビュー中、公開済みなどの状態を管理します。
                     </FieldDescription>
                     {isInvalid ? (
                       <FieldError errors={field.state.meta.errors} />

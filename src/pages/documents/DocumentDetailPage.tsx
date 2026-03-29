@@ -11,6 +11,10 @@ import {
 import createDeleteDocumentMutationOptions from "@/queries/documents/createDeleteDocumentMutationOptions"
 import createDocumentDetailQueryOptions from "@/queries/documents/createDocumentDetailQueryOptions"
 import { cn } from "@/lib/utils"
+import {
+  documentCategoryLabels,
+  documentStatusLabels,
+} from "@/types/documents"
 
 export function DocumentDetailPage() {
   const { id } = useParams()
@@ -75,9 +79,22 @@ export function DocumentDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{document.title}</CardTitle>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
+                  {documentCategoryLabels[document.category]}
+                </span>
+                <span className="rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  {documentStatusLabels[document.status]}
+                </span>
+              </div>
+              <CardTitle>{document.title}</CardTitle>
+            </div>
+          </div>
           <CardDescription>
-            作成日: {new Date(document.createdAt).toLocaleString()}
+            作成日: {new Date(document.createdAt).toLocaleString()} / 更新日:{" "}
+            {new Date(document.updatedAt).toLocaleString()}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -85,9 +102,50 @@ export function DocumentDetailPage() {
             {document.description || "説明はまだありません。"}
           </p>
 
+          <div className="grid gap-4 rounded-md border bg-muted/30 p-4 text-sm md:grid-cols-2">
+            <div>
+              <p className="font-medium text-foreground">Project</p>
+              <Link
+                className="text-muted-foreground underline-offset-4 hover:underline"
+                to={`/projects/${document.project.id}`}
+              >
+                {document.project.code} / {document.project.name}
+              </Link>
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Owner</p>
+              <p className="text-muted-foreground">{document.ownerName}</p>
+              <p className="text-muted-foreground">{document.ownerRole}</p>
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Contact</p>
+              <a
+                className="text-muted-foreground underline-offset-4 hover:underline"
+                href={`mailto:${document.ownerEmail}`}
+              >
+                {document.ownerEmail}
+              </a>
+              <p className="text-muted-foreground">{document.teamName}</p>
+            </div>
+            <div className="md:col-span-2">
+              <p className="font-medium text-foreground">Tags</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {document.tags.map((tag) => (
+                  <span
+                    className="rounded-full border px-2 py-1 text-xs text-muted-foreground"
+                    key={tag}
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className="rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground">
             このページは `createDocumentDetailQueryOptions(id)` を `useQuery`
-            に渡して 1件取得するサンプルです。
+            に渡して 1件取得するだけでなく、faker の `person`、`internet`、
+            `company`、`hacker`、`date` で作ったメタデータも表示するサンプルです。
           </div>
 
           {deleteMutation.error ? (
