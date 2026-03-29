@@ -1,3 +1,6 @@
+import type { Comment } from './comments'
+import type { Incident } from './incidents'
+import type { Manual } from './manuals'
 import type { RiskLevel, RiskSource, WorkStatus } from './common'
 
 export interface WorkGroup {
@@ -152,6 +155,16 @@ export interface WorkRiskAcknowledgment {
     action?: string | null
     item_name?: string | null
   }>
+}
+
+export interface WorkDetailPageData {
+  work: WorkOverview
+  scene: WorkSceneAsset | null
+  comments: Comment[]
+  acknowledgment: WorkRiskAcknowledgment | null
+  manual_risks_by_item_id: Record<number, ManualRisk[]>
+  related_incidents: Incident[]
+  related_manuals: Manual[]
 }
 
 export interface AuditLog {

@@ -1,4 +1,11 @@
 import { z } from 'zod'
+import { incidentSchema } from './incidents'
+import {
+  manualRisksSchema,
+  manualsSchema,
+  workCommentsSchema,
+  workRiskAcknowledgmentSchema,
+} from './support'
 import { riskLevelSchema, workGroupSchema, workStatusSchema } from './shared'
 
 export const workSchema = z.object({
@@ -95,6 +102,20 @@ export const workSceneAssetSchema = z.object({
   camera: workSceneCameraSchema.nullable().optional(),
   transform: workSceneTransformSchema.nullable().optional(),
   annotations: z.array(workSceneAnnotationSchema),
+})
+
+export const workDetailPageSchema = z.object({
+  work: workOverviewSchema,
+  scene: workSceneAssetSchema.nullable(),
+  comments: workCommentsSchema,
+  acknowledgment: workRiskAcknowledgmentSchema.nullable(),
+  manual_risks_by_item_id: z.record(z.string(), manualRisksSchema).transform((entries) =>
+    Object.fromEntries(
+      Object.entries(entries).map(([itemId, risks]) => [Number(itemId), risks]),
+    ),
+  ),
+  related_incidents: z.array(incidentSchema),
+  related_manuals: manualsSchema,
 })
 
 export const createWorkRiskPayloadSchema = z.object({

@@ -3,6 +3,7 @@ import type {
   RiskLevel,
   Work,
   WorkDateSummary,
+  WorkDetailPageData,
   WorkGroup,
   WorkItem,
   WorkListResponse,
@@ -16,6 +17,7 @@ import {
   createWorkPayloadSchema,
   riskAssessmentSchema,
   workDateSummaryListSchema,
+  workDetailPageSchema,
   workDateSummaryParamsSchema,
   workGroupsResponseSchema,
   workItemSchema,
@@ -109,6 +111,14 @@ export const generateRisk = (workItemId: number) =>
 
 export const fetchWorkDetail = (workId: number) =>
   request<WorkOverview>(`/works/${workId}`, undefined, true, workOverviewSchema)
+
+export const fetchWorkDetailPage = (workId: number) =>
+  request<WorkDetailPageData>(
+    `/works/${workId}/detail-page`,
+    undefined,
+    true,
+    workDetailPageSchema,
+  )
 
 export const fetchWorkScene = (workId: number) =>
   request<WorkSceneAsset>(`/works/${workId}/scene`, undefined, true, workSceneAssetSchema)

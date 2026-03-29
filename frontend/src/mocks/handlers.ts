@@ -21,6 +21,7 @@ import type {
   MyWork,
   WorkAsset,
   Notification,
+  WorkDetailPageData,
   WorkSceneAsset,
   WorkSceneAnnotation,
 } from '@/types/api'
@@ -640,6 +641,52 @@ const buildWorkScene = (workId: number): WorkSceneAsset | null => {
   }
 }
 
+const resolveCurrentAcknowledgment = (workId: number) => {
+  const history = mockDbReaders.listAcknowledgments(workId)
+  const acknowledgment = history[0] ?? (mockAcknowledgments[workId] || [])[0] ?? null
+
+  if (!acknowledgment) {
+    return null
+  }
+
+  const riskChangedAt = mockRiskChangeAtByWorkId[workId]
+  if (riskChangedAt && riskChangedAt > acknowledgment.acknowledged_at) {
+    return null
+  }
+
+  return acknowledgment
+}
+
+const buildWorkDetailPage = (workId: number): WorkDetailPageData | null => {
+  const work = mockDbReaders.getWorkOverview(workId) as WorkDetailPageData['work'] | null
+  if (!work) {
+    return null
+  }
+
+  const manualRisksByItemId = Object.fromEntries(
+    work.items.map((entry) => [entry.item.id, mockDbReaders.listManualRisks(entry.item.id)]),
+  )
+
+  const relatedIncidents = mockDbReaders
+    .listIncidents()
+    .filter((incident) => incident.work_id === workId)
+    .sort((a, b) => b.date.localeCompare(a.date))
+
+  const relatedManuals = [...mockDbReaders.listManuals()]
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .slice(0, 3)
+
+  return {
+    work,
+    scene: buildWorkScene(workId),
+    comments: mockDbReaders.listWorkComments(workId),
+    acknowledgment: resolveCurrentAcknowledgment(workId),
+    manual_risks_by_item_id: manualRisksByItemId,
+    related_incidents: relatedIncidents,
+    related_manuals: relatedManuals,
+  }
+}
+
 const mockWorkDateSummary = mockWorks.map((work) => ({
   work_date: work.work_date,
   count: 1,
@@ -784,6 +831,17 @@ export const handlers = [
     }
 
     return HttpResponse.json(workOverview, { status: 200 })
+  }),
+
+  http.get('*/works/:workId/detail-page', ({ params }) => {
+    const workId = Number(params.workId)
+    const detailPage = buildWorkDetailPage(workId)
+
+    if (!detailPage) {
+      return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    return HttpResponse.json(detailPage, { status: 200 })
   }),
 
   http.get('*/works/:workId/scene', ({ params }) => {
@@ -1586,13 +1644,13 @@ export const handlers = [
     if (!acknowledgment) {
       const fallback = (mockAcknowledgments[workId] || [])[0]
       if (!fallback) {
-        return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+        return new HttpResponse(null, { status: 204 })
       }
       return HttpResponse.json(fallback, { status: 200 })
     }
     const riskChangedAt = mockRiskChangeAtByWorkId[workId]
     if (riskChangedAt && riskChangedAt > acknowledgment.acknowledged_at) {
-      return HttpResponse.json({ error: 'Not acknowledged yet' }, { status: 404 })
+      return new HttpResponse(null, { status: 204 })
     }
     return HttpResponse.json(acknowledgment, { status: 200 })
   }),

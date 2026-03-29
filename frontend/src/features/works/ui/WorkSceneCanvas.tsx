@@ -66,7 +66,7 @@ export function WorkSceneCanvas({ sceneAsset, selectedAnnotationId, onSelectAnno
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.shadowMap.type = THREE.PCFShadowMap
     container.appendChild(renderer.domElement)
 
     const controls = new OrbitControls(camera, renderer.domElement)
@@ -171,7 +171,7 @@ export function WorkSceneCanvas({ sceneAsset, selectedAnnotationId, onSelectAnno
     const loader = new GLTFLoader()
     let disposed = false
     let animationFrameId = 0
-    const clock = new THREE.Clock()
+    const startedAt = performance.now()
     const raycaster = new THREE.Raycaster()
     const pointer = new THREE.Vector2()
 
@@ -269,7 +269,7 @@ export function WorkSceneCanvas({ sceneAsset, selectedAnnotationId, onSelectAnno
     )
 
     const animate = () => {
-      const elapsed = clock.getElapsedTime()
+      const elapsed = (performance.now() - startedAt) / 1000
       const activeTransition = cameraTransitionRef.current
       if (activeTransition?.active) {
         const elapsedMs = performance.now() - activeTransition.startedAt

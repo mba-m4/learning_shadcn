@@ -22,6 +22,7 @@ export const queryKeys = {
     acknowledgmentHistory: (workId: number) => ['works', 'acknowledgment-history', workId] as const,
     list: (params: WorkListParams) => ['works', 'list', params] as const,
     detail: (workId: number) => ['works', 'detail', workId] as const,
+    detailPage: (workId: number) => ['works', 'detail-page', workId] as const,
     scene: (workId: number) => ['works', 'scene', workId] as const,
     dates: (params: WorkDateSummaryParams) => ['works', 'dates', params] as const,
     comments: (workId: number) => ['works', 'comments', workId] as const,

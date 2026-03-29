@@ -10,6 +10,7 @@ import type {
 	ManualRisk,
 	RiskSummary,
 	WorkDateSummary,
+	WorkDetailPageData,
 	WorkGroup,
 	WorkListResponse,
 	WorkOverview,
@@ -29,6 +30,7 @@ import {
 	fetchAcknowledgmentHistory,
 	fetchComments,
 	fetchDailyOverview,
+	fetchWorkDetailPage,
 	fetchGroups,
 	fetchManualRisks,
 	fetchRiskSummary,
@@ -181,6 +183,21 @@ export const createWorkDetailQueryOptions = <
 		queryFn: () => fetchWorkDetail(workId),
 	})
 
+export type WorkDetailPageQueryOptions<TData = WorkDetailPageData, TError = Error> = Omit<
+	UseQueryOptions<WorkDetailPageData, TError, TData>,
+	'queryKey' | 'queryFn'
+>
+
+export const createWorkDetailPageQueryOptions = <TData = WorkDetailPageData, TError = Error>(
+	workId: number,
+	queryConfig?: WorkDetailPageQueryOptions<TData, TError>,
+) =>
+	queryOptions({
+		...queryConfig,
+		queryKey: queryKeys.works.detailPage(workId),
+		queryFn: () => fetchWorkDetailPage(workId),
+	})
+
 export type WorkSceneQueryOptions<TData = WorkSceneAsset, TError = Error> = Omit<
 	UseQueryOptions<WorkSceneAsset, TError, TData>,
 	'queryKey' | 'queryFn'
@@ -216,6 +233,7 @@ export const createAddWorkCommentMutationOptions = (workId: number) =>
 		mutationFn: ({ content }: { content: string }) => addComment(workId, content),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.comments(workId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.detailPage(workId) })
 		},
 	})
 
@@ -276,6 +294,7 @@ export const createManualRiskForItemMutationOptions = (workId: number) =>
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.manualRisks(variables.itemId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.detailPage(workId) })
 		},
 	})
 
@@ -305,6 +324,7 @@ export const createUpdateManualRiskForItemMutationOptions = (workId: number) =>
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.manualRisks(variables.itemId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.detailPage(workId) })
 		},
 	})
 
@@ -326,6 +346,7 @@ export const createDeleteManualRiskForItemMutationOptions = (workId: number) =>
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.manualRisks(variables.itemId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.detailPage(workId) })
 		},
 	})
 
@@ -347,6 +368,7 @@ export const createGenerateRiskForItemMutationOptions = (workId: number) =>
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.detail(workId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.detailPage(workId) })
 		},
 	})
 
@@ -359,6 +381,7 @@ export const createUpdateAiRiskMutationOptions = (workId?: number) =>
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.detail(workId) })
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
+				await queryClient.invalidateQueries({ queryKey: queryKeys.works.detailPage(workId) })
 			}
 		},
 	})
@@ -371,6 +394,7 @@ export const createDeleteAiRiskMutationOptions = (workId?: number) =>
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.detail(workId) })
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
 				await queryClient.invalidateQueries({ queryKey: queryKeys.works.scene(workId) })
+				await queryClient.invalidateQueries({ queryKey: queryKeys.works.detailPage(workId) })
 			}
 		},
 	})
@@ -412,5 +436,6 @@ export const createSubmitAcknowledgmentMutationOptions = (workId: number) =>
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgment(workId) })
 			await queryClient.invalidateQueries({ queryKey: queryKeys.works.acknowledgmentHistory(workId) })
+			await queryClient.invalidateQueries({ queryKey: queryKeys.works.detailPage(workId) })
 		},
 	})
